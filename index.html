@@ -4,14 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>비행시간 기록부 - Cloud Sync</title>
+    <title>비행시간 기록부</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -30,53 +24,6 @@
             box-shadow: 0 10px 40px rgba(37, 99, 235, 0.4);
         }
         .header h1 { font-size: 28px; margin-bottom: 5px; }
-        .sync-status {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        .sync-status.synced {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-        .sync-status.syncing {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.4);
-        }
-        .sync-status.error {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-        }
-        
-        .config-notice {
-            background: rgba(245, 158, 11, 0.2);
-            border: 2px solid rgba(245, 158, 11, 0.4);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-        .config-notice h3 {
-            color: #fbbf24;
-            margin-bottom: 10px;
-        }
-        .config-form {
-            display: grid;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .config-input {
-            padding: 10px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(51, 65, 85, 0.6);
-            border-radius: 8px;
-            color: #e2e8f0;
-            font-size: 13px;
-        }
         
         .main-stats {
             display: grid;
@@ -290,25 +237,6 @@
         input[type="file"] { display: none; }
         .empty-state { text-align: center; padding: 50px 20px; color: #64748b; }
         
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #60a5fa;
-        }
-        .spinner {
-            border: 4px solid rgba(59, 130, 246, 0.3);
-            border-top: 4px solid #60a5fa;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
         @media (max-width: 768px) {
             .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
             .main-stats { grid-template-columns: repeat(2, 1fr); }
@@ -318,368 +246,588 @@
 </head>
 <body>
     <div class="container">
-        <!-- Firebase 설정 필요 알림 -->
-        <div id="configNotice" class="config-notice" style="display:none;">
-            <h3>⚙️ Firebase 설정이 필요합니다</h3>
-            <p style="margin-bottom: 15px; font-size: 14px;">아래 가이드를 따라 Firebase 프로젝트를 생성하고 설정 정보를 입력하세요.</p>
-            
-            <div class="config-form">
-                <input type="text" id="apiKey" class="config-input" placeholder="API Key">
-                <input type="text" id="projectId" class="config-input" placeholder="Project ID">
-                <input type="text" id="appId" class="config-input" placeholder="App ID">
-                <button class="btn-primary" onclick="saveFirebaseConfig()">✅ 설정 저장</button>
-            </div>
-        </div>
-
         <div class="header">
             <h1>✈️ Pilot Flight Logbook</h1>
-            <p>Professional Flight Time Recording System - Cloud Sync</p>
-            <div class="sync-status syncing" id="syncStatus">
-                🔄 연결 중...
+            <p>Professional Flight Time Recording System</p>
+        </div>
+
+        <div class="main-stats">
+            <div class="main-stat-card" style="border-left-color: #3b82f6;">
+                <h3>Total Block Time</h3>
+                <div class="value" style="color: #3b82f6;" id="totalBlock">0:00</div>
+                <div class="subtext" id="prevBlock">이전: 0:00</div>
+            </div>
+            <div class="main-stat-card" style="border-left-color: #10b981;">
+                <h3>Total PIC</h3>
+                <div class="value" style="color: #10b981;" id="totalPIC">0:00</div>
+                <div class="subtext" id="prevPIC">이전: 0:00</div>
+            </div>
+            <div class="main-stat-card" style="border-left-color: #8b5cf6;">
+                <h3>Night Time</h3>
+                <div class="value" style="color: #8b5cf6;" id="totalNight">0:00</div>
+                <div class="subtext" id="prevNight">이전: 0:00</div>
+            </div>
+            <div class="main-stat-card" style="border-left-color: #f59e0b;">
+                <h3>Instrument</h3>
+                <div class="value" style="color: #f59e0b;" id="totalInst">0:00</div>
+                <div class="subtext" id="prevInst">이전: 0:00</div>
+            </div>
+            <div class="main-stat-card" style="border-left-color: #ec4899;">
+                <h3>Takeoffs</h3>
+                <div class="value" style="color: #ec4899;" id="totalTO">0</div>
+                <div class="subtext" id="prevTO">이전: 0</div>
+            </div>
+            <div class="main-stat-card" style="border-left-color: #06b6d4;">
+                <h3>Landings</h3>
+                <div class="value" style="color: #06b6d4;" id="totalLD">0</div>
+                <div class="subtext" id="prevLD">이전: 0</div>
             </div>
         </div>
 
-        <div id="app" style="display:none;">
-            <div class="main-stats">
-                <div class="main-stat-card" style="border-left-color: #3b82f6;">
-                    <h3>Total Block Time</h3>
-                    <div class="value" style="color: #3b82f6;" id="totalBlock">0:00</div>
-                    <div class="subtext" id="prevBlock">이전: 0:00</div>
+        <div class="buttons">
+            <button class="btn-primary" onclick="showAddModal()">➕ 비행 추가</button>
+            <label class="btn-secondary" style="display: inline-block; cursor: pointer;">
+                📤 엑셀 가져오기
+                <input type="file" accept=".xlsx,.xls" onchange="importExcel(event)">
+            </label>
+            <button class="btn-warning" onclick="exportExcel()">📥 엑셀 내보내기</button>
+            <button class="btn-danger" onclick="resetAll()">🔄 전체 리셋</button>
+        </div>
+
+        <div class="filter-bar">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">🔍 검색</label>
+                    <input type="text" class="filter-input" id="searchText" placeholder="편명, 공항, 비고...">
                 </div>
-                <div class="main-stat-card" style="border-left-color: #10b981;">
-                    <h3>Total PIC</h3>
-                    <div class="value" style="color: #10b981;" id="totalPIC">0:00</div>
-                    <div class="subtext" id="prevPIC">이전: 0:00</div>
+                <div class="filter-group">
+                    <label class="filter-label">📅 날짜 (시작)</label>
+                    <input type="date" class="filter-input" id="dateFrom">
                 </div>
-                <div class="main-stat-card" style="border-left-color: #8b5cf6;">
-                    <h3>Night Time</h3>
-                    <div class="value" style="color: #8b5cf6;" id="totalNight">0:00</div>
-                    <div class="subtext" id="prevNight">이전: 0:00</div>
+                <div class="filter-group">
+                    <label class="filter-label">📅 날짜 (종료)</label>
+                    <input type="date" class="filter-input" id="dateTo">
                 </div>
-                <div class="main-stat-card" style="border-left-color: #f59e0b;">
-                    <h3>Instrument</h3>
-                    <div class="value" style="color: #f59e0b;" id="totalInst">0:00</div>
-                    <div class="subtext" id="prevInst">이전: 0:00</div>
+                <div class="filter-group">
+                    <label class="filter-label">✈️ 항공기</label>
+                    <select class="filter-select" id="aircraftFilter">
+                        <option value="">전체</option>
+                    </select>
                 </div>
-                <div class="main-stat-card" style="border-left-color: #ec4899;">
-                    <h3>Takeoffs</h3>
-                    <div class="value" style="color: #ec4899;" id="totalTO">0</div>
-                    <div class="subtext" id="prevTO">이전: 0</div>
+                <div class="filter-group">
+                    <label class="filter-label">🛫 출발지</label>
+                    <select class="filter-select" id="fromFilter">
+                        <option value="">전체</option>
+                    </select>
                 </div>
-                <div class="main-stat-card" style="border-left-color: #06b6d4;">
-                    <h3>Landings</h3>
-                    <div class="value" style="color: #06b6d4;" id="totalLD">0</div>
-                    <div class="subtext" id="prevLD">이전: 0</div>
+                <div class="filter-group">
+                    <label class="filter-label">🛬 도착지</label>
+                    <select class="filter-select" id="toFilter">
+                        <option value="">전체</option>
+                    </select>
                 </div>
             </div>
-
-            <div class="buttons">
-                <button class="btn-primary" onclick="showAddModal()">➕ 비행 추가</button>
-                <label class="btn-secondary" style="display: inline-block; cursor: pointer;">
-                    📤 엑셀 가져오기
-                    <input type="file" accept=".xlsx,.xls" onchange="importExcel(event)">
-                </label>
-                <button class="btn-warning" onclick="exportExcel()">📥 엑셀 내보내기</button>
-                <button class="btn-danger" onclick="resetAll()">🔄 전체 리셋</button>
+            <div class="filter-btn-group">
+                <button class="filter-btn" onclick="applyFilters()">✅ 필터 적용</button>
+                <button class="filter-btn" onclick="clearFilters()">❌ 필터 초기화</button>
             </div>
+        </div>
 
-            <div class="filter-bar">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label class="filter-label">🔍 검색</label>
-                        <input type="text" class="filter-input" id="searchText" placeholder="편명, 공항, 비고...">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">📅 날짜 (시작)</label>
-                        <input type="date" class="filter-input" id="dateFrom">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">📅 날짜 (종료)</label>
-                        <input type="date" class="filter-input" id="dateTo">
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">✈️ 항공기</label>
-                        <select class="filter-select" id="aircraftFilter">
-                            <option value="">전체</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">🛫 출발지</label>
-                        <select class="filter-select" id="fromFilter">
-                            <option value="">전체</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">🛬 도착지</label>
-                        <select class="filter-select" id="toFilter">
-                            <option value="">전체</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="filter-btn-group">
-                    <button class="filter-btn" onclick="applyFilters()">✅ 필터 적용</button>
-                    <button class="filter-btn" onclick="clearFilters()">❌ 필터 초기화</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2 style="margin-bottom: 18px; font-size: 19px;">비행 기록 (<span id="count">0</span>)</h2>
-                <div id="list">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p>로딩 중...</p>
-                    </div>
+        <div class="card">
+            <h2 style="margin-bottom: 18px; font-size: 19px;">비행 기록 (<span id="count">0</span>)</h2>
+            <div id="list">
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 12px;">✈️</div>
+                    <p>비행 기록이 없습니다.</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 비행 추가/수정 모달은 동일하므로 생략... -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 20px;" id="modalTitle">✈️ 새 비행 기록</h2>
+            <form onsubmit="saveFlight(event)">
+                <input type="hidden" id="editId">
+                
+                <div class="form-section">
+                    <h3>📅 기본 정보</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>날짜 *</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>항공기 *</label>
+                            <input type="text" id="aircraft" placeholder="B737" required>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>FLT NO</label>
+                            <input type="text" id="fltNo" placeholder="KE123">
+                        </div>
+                        <div class="form-group">
+                            <label>출발 *</label>
+                            <input type="text" id="from" placeholder="RKSI" required>
+                        </div>
+                        <div class="form-group">
+                            <label>도착 *</label>
+                            <input type="text" id="to" placeholder="RJAA" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>⏱️ 시간 입력 (HH:MM)</h3>
+                    <div class="form-row-4">
+                        <div class="form-group">
+                            <label>RAMP OUT</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="rampOutH" min="0" max="23" placeholder="HH">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="rampOutM" min="0" max="59" placeholder="MM">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>TAKEOFF</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="takeoffH" min="0" max="23" placeholder="HH">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="takeoffM" min="0" max="59" placeholder="MM">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>LANDING</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="landingH" min="0" max="23" placeholder="HH">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="landingM" min="0" max="59" placeholder="MM">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>RAMP IN</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="rampInH" min="0" max="23" placeholder="HH">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="rampInM" min="0" max="59" placeholder="MM">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calc-display">
+                        <div class="calc-label">자동 계산:</div>
+                        <div class="calc-value">BLOCK TIME: <span id="calcBlock">--</span> | INST TIME: <span id="calcInst">--</span></div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>👨‍✈️ 역할별 시간 (60진법: 시:분)</h3>
+                    <div class="form-row-4">
+                        <div class="form-group">
+                            <label>PIC</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="picH" min="0" placeholder="시">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="picM" min="0" max="59" placeholder="분">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>PIC under SUPVSN</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="picSupvH" min="0" placeholder="시">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="picSupvM" min="0" max="59" placeholder="분">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>CO-PILOT</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="coPilotH" min="0" placeholder="시">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="coPilotM" min="0" max="59" placeholder="분">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>TR</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="trH" min="0" placeholder="시">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="trM" min="0" max="59" placeholder="분">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>NIGHT</label>
+                            <div class="time-input-group">
+                                <input type="number" class="time-input" id="nightH" min="0" placeholder="시">
+                                <span class="time-separator">:</span>
+                                <input type="number" class="time-input" id="nightM" min="0" max="59" placeholder="분">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>🛬 이착륙</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Takeoffs (횟수)</label>
+                            <input type="number" id="toCount" placeholder="1" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Landings (횟수)</label>
+                            <input type="number" id="ldCount" placeholder="1" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>📝 상세 정보</h3>
+                    <div class="form-group">
+                        <label>비고</label>
+                        <input type="text" id="remark" placeholder="C 김철수">
+                    </div>
+                    <div class="form-group">
+                        <label>기상 (Wx Dest)</label>
+                        <input type="text" id="wx" placeholder="CAVOK">
+                    </div>
+                    <div class="form-group">
+                        <label>Landing Comment</label>
+                        <textarea id="landingCmt"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Clearance</label>
+                        <textarea id="clearance"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>TIP</label>
+                        <textarea id="tip"></textarea>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn-primary" style="flex: 1; padding: 14px;">저장</button>
+                    <button type="button" class="btn-secondary" style="flex: 1; padding: 14px;" onclick="closeModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
-        // ========================================
-        // Firebase 설정
-        // ========================================
+        let flights = JSON.parse(localStorage.getItem('flights_v3') || '[]');
+        let prev = JSON.parse(localStorage.getItem('prev_v3') || '{"block":0,"pic":0,"picSupv":0,"coPilot":0,"tr":0,"night":0,"inst":0,"to":0,"ld":0}');
         
-        // 여기에 Firebase 설정을 입력하세요
-        // Firebase Console에서 프로젝트 생성 후 받은 설정 정보
-        const FIREBASE_CONFIG_KEY = 'firebase_config';
-        
-        let db = null;
-        let userId = 'demo-user'; // 간단한 버전: 단일 사용자
-        
-        function checkFirebaseConfig() {
-            const saved = localStorage.getItem(FIREBASE_CONFIG_KEY);
-            if (saved) {
-                try {
-                    const config = JSON.parse(saved);
-                    initFirebase(config);
-                    return true;
-                } catch (e) {
-                    console.error('Config parse error:', e);
-                }
-            }
-            
-            // 설정 입력 폼 표시
-            document.getElementById('configNotice').style.display = 'block';
-            document.getElementById('app').style.display = 'none';
-            return false;
-        }
-        
-        function saveFirebaseConfig() {
-            const apiKey = document.getElementById('apiKey').value.trim();
-            const projectId = document.getElementById('projectId').value.trim();
-            const appId = document.getElementById('appId').value.trim();
-            
-            if (!apiKey || !projectId || !appId) {
-                alert('모든 필드를 입력해주세요!');
-                return;
-            }
-            
-            const config = {
-                apiKey: apiKey,
-                authDomain: `${projectId}.firebaseapp.com`,
-                projectId: projectId,
-                storageBucket: `${projectId}.appspot.com`,
-                messagingSenderId: 'AUTO',
-                appId: appId
-            };
-            
-            localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
-            initFirebase(config);
-        }
-        
-        function initFirebase(config) {
-            try {
-                firebase.initializeApp(config);
-                db = firebase.firestore();
-                
-                // 익명 로그인 (간단한 버전)
-                firebase.auth().signInAnonymously().then((result) => {
-                    userId = result.user.uid;
-                    document.getElementById('configNotice').style.display = 'none';
-                    document.getElementById('app').style.display = 'block';
-                    setSyncStatus('synced', '☁️ 클라우드 연결됨');
-                    loadFromFirebase();
-                }).catch(error => {
-                    console.error('Auth error:', error);
-                    setSyncStatus('error', '❌ 인증 실패');
-                });
-            } catch (error) {
-                console.error('Firebase init error:', error);
-                setSyncStatus('error', '❌ 연결 실패');
-                alert('Firebase 설정 오류! 설정 정보를 확인하세요.');
-            }
-        }
-        
-        function setSyncStatus(status, text) {
-            const el = document.getElementById('syncStatus');
-            el.className = `sync-status ${status}`;
-            el.textContent = text;
-        }
-        
-        // ========================================
-        // 데이터 관리
-        // ========================================
-        
-        let flights = [];
-        let prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
-        
-        async function loadFromFirebase() {
-            if (!db) return;
-            
-            try {
-                setSyncStatus('syncing', '🔄 동기화 중...');
-                
-                // 비행 기록 로드
-                const flightsSnapshot = await db.collection('users').doc(userId).collection('flights').get();
-                flights = flightsSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                
-                // 이전 데이터 로드
-                const prevDoc = await db.collection('users').doc(userId).collection('settings').doc('previous').get();
-                if (prevDoc.exists) {
-                    prev = prevDoc.data();
-                }
-                
-                setSyncStatus('synced', '☁️ 동기화 완료');
-                applyFilters();
-                updateFilterOptions();
-            } catch (error) {
-                console.error('Load error:', error);
-                setSyncStatus('error', '❌ 로드 실패');
-            }
-        }
-        
-        async function saveToFirebase(flight) {
-            if (!db) return;
-            
-            try {
-                setSyncStatus('syncing', '🔄 저장 중...');
-                
-                if (flight.id && flight.id.toString().length > 15) {
-                    // 기존 문서 업데이트
-                    await db.collection('users').doc(userId).collection('flights').doc(flight.id).set(flight);
-                } else {
-                    // 새 문서 추가
-                    const docRef = await db.collection('users').doc(userId).collection('flights').add(flight);
-                    flight.id = docRef.id;
-                }
-                
-                setSyncStatus('synced', '☁️ 저장 완료');
-                return flight;
-            } catch (error) {
-                console.error('Save error:', error);
-                setSyncStatus('error', '❌ 저장 실패');
-                throw error;
-            }
-        }
-        
-        async function deleteFromFirebase(id) {
-            if (!db) return;
-            
-            try {
-                setSyncStatus('syncing', '🔄 삭제 중...');
-                await db.collection('users').doc(userId).collection('flights').doc(id).delete();
-                setSyncStatus('synced', '☁️ 삭제 완료');
-            } catch (error) {
-                console.error('Delete error:', error);
-                setSyncStatus('error', '❌ 삭제 실패');
-                throw error;
-            }
-        }
-        
-        async function savePreviousToFirebase() {
-            if (!db) return;
-            
-            try {
-                await db.collection('users').doc(userId).collection('settings').doc('previous').set(prev);
-            } catch (error) {
-                console.error('Save previous error:', error);
-            }
-        }
-        
-        // ========================================
-        // UI 함수들 (기존과 동일하지만 Firebase 연동)
-        // ========================================
+        console.log('=== 앱 초기화 ===');
+        console.log('저장된 비행:', flights.length);
+        console.log('이전 데이터:', prev);
         
         function pad(n) { return String(n).padStart(2, '0'); }
+        
         function toDisplay(dec) {
             if (!dec) return '0:00';
             const h = Math.floor(dec);
             const m = Math.round((dec - h) * 60);
             return `${h}:${pad(m)}`;
         }
-        function toDec(h, m) { return (h || 0) + (m || 0) / 60; }
         
-        async function saveFlight(flight) {
-            const saved = await saveToFirebase(flight);
-            if (!saved.id) return;
+        function toDec(h, m) { 
+            return (h || 0) + (m || 0) / 60; 
+        }
+        
+        function timeStr(h, m) {
+            if (!h && !m) return '';
+            return `${pad(h||0)}:${pad(m||0)}`;
+        }
+        
+        function calcTimes(rampOut, takeoff, landing, rampIn) {
+            if (!rampOut || !rampIn) return { block: 0, inst: 0 };
             
-            const idx = flights.findIndex(f => f.id === saved.id);
-            if (idx >= 0) {
-                flights[idx] = saved;
+            const toMin = (t) => {
+                if (!t) return 0;
+                const [h, m] = t.split(':').map(Number);
+                return h * 60 + m;
+            };
+            
+            const rampOutMin = toMin(rampOut);
+            const rampInMin = toMin(rampIn);
+            let blockMin = rampInMin - rampOutMin;
+            if (blockMin < 0) blockMin += 1440;
+            
+            let instMin = 0;
+            if (takeoff && landing) {
+                const toMin_ = toMin(takeoff);
+                const ldMin = toMin(landing);
+                instMin = ldMin - toMin_;
+                if (instMin < 0) instMin += 1440;
+            }
+            
+            return {
+                block: blockMin / 60,
+                inst: instMin / 60
+            };
+        }
+        
+        ['rampOutH', 'rampOutM', 'takeoffH', 'takeoffM', 'landingH', 'landingM', 'rampInH', 'rampInM'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateCalc);
+        });
+        
+        function updateCalc() {
+            const rampOut = timeStr(
+                document.getElementById('rampOutH').value,
+                document.getElementById('rampOutM').value
+            );
+            const takeoff = timeStr(
+                document.getElementById('takeoffH').value,
+                document.getElementById('takeoffM').value
+            );
+            const landing = timeStr(
+                document.getElementById('landingH').value,
+                document.getElementById('landingM').value
+            );
+            const rampIn = timeStr(
+                document.getElementById('rampInH').value,
+                document.getElementById('rampInM').value
+            );
+            
+            const times = calcTimes(rampOut, takeoff, landing, rampIn);
+            document.getElementById('calcBlock').textContent = times.block > 0 ? toDisplay(times.block) : '--';
+            document.getElementById('calcInst').textContent = times.inst > 0 ? toDisplay(times.inst) : '--';
+        }
+        
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = '✈️ 새 비행 기록';
+            document.getElementById('editId').value = '';
+            document.getElementById('modal').classList.add('show');
+            document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        }
+        
+        function showEditModal(id) {
+            const flight = flights.find(f => f.id === id);
+            if (!flight) return;
+            
+            console.log('수정 모드:', flight);
+            
+            document.getElementById('modalTitle').textContent = '✏️ 비행 기록 수정';
+            document.getElementById('editId').value = id;
+            document.getElementById('date').value = flight.date;
+            document.getElementById('aircraft').value = flight.aircraft;
+            document.getElementById('fltNo').value = flight.fltNo || '';
+            document.getElementById('from').value = flight.from;
+            document.getElementById('to').value = flight.to;
+            
+            if (flight.rampOut) {
+                const [h, m] = flight.rampOut.split(':');
+                document.getElementById('rampOutH').value = h;
+                document.getElementById('rampOutM').value = m;
+            }
+            if (flight.takeoff) {
+                const [h, m] = flight.takeoff.split(':');
+                document.getElementById('takeoffH').value = h;
+                document.getElementById('takeoffM').value = m;
+            }
+            if (flight.landing) {
+                const [h, m] = flight.landing.split(':');
+                document.getElementById('landingH').value = h;
+                document.getElementById('landingM').value = m;
+            }
+            if (flight.rampIn) {
+                const [h, m] = flight.rampIn.split(':');
+                document.getElementById('rampInH').value = h;
+                document.getElementById('rampInM').value = m;
+            }
+            
+            const fillTime = (id, val) => {
+                if (!val) return;
+                const h = Math.floor(val);
+                const m = Math.round((val - h) * 60);
+                document.getElementById(id + 'H').value = h;
+                document.getElementById(id + 'M').value = m;
+            };
+            fillTime('pic', flight.pic);
+            fillTime('picSupv', flight.picSupv);
+            fillTime('coPilot', flight.coPilot);
+            fillTime('tr', flight.tr);
+            fillTime('night', flight.night);
+            
+            document.getElementById('toCount').value = flight.toCount || '';
+            document.getElementById('ldCount').value = flight.ldCount || '';
+            document.getElementById('remark').value = flight.remark || '';
+            document.getElementById('wx').value = flight.wx || '';
+            document.getElementById('landingCmt').value = flight.landingCmt || '';
+            document.getElementById('clearance').value = flight.clearance || '';
+            document.getElementById('tip').value = flight.tip || '';
+            
+            updateCalc();
+            document.getElementById('modal').classList.add('show');
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+            document.querySelector('form').reset();
+        }
+        
+        function saveFlight(e) {
+            e.preventDefault();
+            
+            const rampOut = timeStr(
+                document.getElementById('rampOutH').value,
+                document.getElementById('rampOutM').value
+            );
+            const takeoff = timeStr(
+                document.getElementById('takeoffH').value,
+                document.getElementById('takeoffM').value
+            );
+            const landing = timeStr(
+                document.getElementById('landingH').value,
+                document.getElementById('landingM').value
+            );
+            const rampIn = timeStr(
+                document.getElementById('rampInH').value,
+                document.getElementById('rampInM').value
+            );
+            
+            const times = calcTimes(rampOut, takeoff, landing, rampIn);
+            
+            const data = {
+                date: document.getElementById('date').value,
+                aircraft: document.getElementById('aircraft').value,
+                fltNo: document.getElementById('fltNo').value,
+                from: document.getElementById('from').value.toUpperCase(),
+                to: document.getElementById('to').value.toUpperCase(),
+                rampOut: rampOut,
+                takeoff: takeoff,
+                landing: landing,
+                rampIn: rampIn,
+                blockTime: times.block,
+                instTime: times.inst,
+                pic: toDec(+document.getElementById('picH').value, +document.getElementById('picM').value),
+                picSupv: toDec(+document.getElementById('picSupvH').value, +document.getElementById('picSupvM').value),
+                coPilot: toDec(+document.getElementById('coPilotH').value, +document.getElementById('coPilotM').value),
+                tr: toDec(+document.getElementById('trH').value, +document.getElementById('trM').value),
+                night: toDec(+document.getElementById('nightH').value, +document.getElementById('nightM').value),
+                toCount: +document.getElementById('toCount').value || 0,
+                ldCount: +document.getElementById('ldCount').value || 0,
+                remark: document.getElementById('remark').value,
+                wx: document.getElementById('wx').value,
+                landingCmt: document.getElementById('landingCmt').value,
+                clearance: document.getElementById('clearance').value,
+                tip: document.getElementById('tip').value
+            };
+            
+            console.log('저장할 데이터:', data);
+            
+            const editId = document.getElementById('editId').value;
+            if (editId) {
+                const idx = flights.findIndex(f => f.id == editId);
+                flights[idx] = { ...flights[idx], ...data };
+                console.log('기존 비행 수정:', editId);
             } else {
-                flights.push(saved);
+                data.id = Date.now();
+                flights.push(data);
+                console.log('새 비행 추가:', data.id);
             }
             
+            save();
+            closeModal();
+        }
+        
+        function deleteFlight(id) {
+            if (confirm('삭제하시겠습니까?')) {
+                console.log('비행 삭제:', id);
+                flights = flights.filter(f => f.id !== id);
+                save();
+            }
+        }
+        
+        function resetAll() {
+            if (confirm('⚠️ 경고!\n\n모든 비행 기록과 이전 누적 데이터가 삭제됩니다.\n정말로 전체 리셋하시겠습니까?')) {
+                if (confirm('정말 확실합니까? 이 작업은 되돌릴 수 없습니다!')) {
+                    console.log('전체 리셋 실행');
+                    localStorage.removeItem('flights_v3');
+                    localStorage.removeItem('prev_v3');
+                    flights = [];
+                    prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
+                    render(flights);
+                    updateFilterOptions();
+                    alert('✅ 전체 리셋 완료!');
+                }
+            }
+        }
+        
+        function save() {
+            localStorage.setItem('flights_v3', JSON.stringify(flights));
+            console.log('저장 완료. 총 비행:', flights.length);
             applyFilters();
             updateFilterOptions();
         }
         
-        async function deleteFlight(id) {
-            if (!confirm('삭제하시겠습니까?')) return;
+        function updateFilterOptions() {
+            const aircrafts = [...new Set(flights.map(f => f.aircraft))].sort();
+            const froms = [...new Set(flights.map(f => f.from))].sort();
+            const tos = [...new Set(flights.map(f => f.to))].sort();
             
-            await deleteFromFirebase(id);
-            flights = flights.filter(f => f.id !== id);
-            applyFilters();
-            updateFilterOptions();
+            const updateSelect = (id, items) => {
+                const sel = document.getElementById(id);
+                const current = sel.value;
+                sel.innerHTML = '<option value="">전체</option>' + 
+                    items.map(i => `<option value="${i}">${i}</option>`).join('');
+                sel.value = current;
+            };
+            
+            updateSelect('aircraftFilter', aircrafts);
+            updateSelect('fromFilter', froms);
+            updateSelect('toFilter', tos);
         }
         
-        async function resetAll() {
-            if (!confirm('⚠️ 모든 데이터를 삭제하시겠습니까?')) return;
-            if (!confirm('정말 확실합니까? 복구할 수 없습니다!')) return;
+        function applyFilters() {
+            const searchText = document.getElementById('searchText').value.toUpperCase();
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const aircraft = document.getElementById('aircraftFilter').value;
+            const from = document.getElementById('fromFilter').value;
+            const to = document.getElementById('toFilter').value;
             
-            try {
-                setSyncStatus('syncing', '🔄 리셋 중...');
-                
-                // 모든 문서 삭제
-                const batch = db.batch();
-                const snapshot = await db.collection('users').doc(userId).collection('flights').get();
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                
-                // 이전 데이터 리셋
-                prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
-                await savePreviousToFirebase();
-                
-                flights = [];
-                setSyncStatus('synced', '☁️ 리셋 완료');
-                applyFilters();
-                updateFilterOptions();
-                alert('✅ 전체 리셋 완료!');
-            } catch (error) {
-                console.error('Reset error:', error);
-                setSyncStatus('error', '❌ 리셋 실패');
-            }
+            let filtered = flights.filter(f => {
+                if (searchText && ![f.fltNo, f.from, f.to, f.remark, f.clearance].join(' ').toUpperCase().includes(searchText)) return false;
+                if (dateFrom && f.date < dateFrom) return false;
+                if (dateTo && f.date > dateTo) return false;
+                if (aircraft && f.aircraft !== aircraft) return false;
+                if (from && f.from !== from) return false;
+                if (to && f.to !== to) return false;
+                return true;
+            });
+            
+            console.log('필터 적용:', filtered.length, '/', flights.length);
+            render(filtered);
+        }
+        
+        function clearFilters() {
+            document.getElementById('searchText').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('aircraftFilter').value = '';
+            document.getElementById('fromFilter').value = '';
+            document.getElementById('toFilter').value = '';
+            applyFilters();
         }
         
         function render(list) {
             document.getElementById('count').textContent = list.length;
             if (list.length === 0) {
-                document.getElementById('list').innerHTML = '<div class="empty-state"><div style="font-size:48px;">✈️</div><p>비행 기록이 없습니다.</p></div>';
+                document.getElementById('list').innerHTML = '<div class="empty-state"><div style="font-size:48px;">🔍</div><p>검색 결과 없음</p></div>';
                 updateStats();
                 return;
             }
             
             document.getElementById('list').innerHTML = list.slice().reverse().map(f => {
+                const details = f.remark || f.wx || f.landingCmt || f.clearance || f.tip;
                 return `
                     <div class="flight-row">
                         <div class="action-btns">
-                            <button class="action-btn" onclick="editFlight('${f.id}')">✏️ 수정</button>
-                            <button class="action-btn delete" onclick="deleteFlight('${f.id}')">🗑️</button>
+                            <button class="action-btn" onclick="showEditModal(${f.id})">✏️ 수정</button>
+                            <button class="action-btn delete" onclick="deleteFlight(${f.id})">🗑️</button>
                         </div>
                         <div class="flight-info">
                             <div><div class="flight-info-label">날짜</div><div class="flight-info-value">${f.date}</div></div>
@@ -688,9 +836,23 @@
                             <div><div class="flight-info-label">구간</div><div class="flight-info-value">${f.from}→${f.to}</div></div>
                             <div><div class="flight-info-label">BLOCK</div><div class="flight-info-value" style="color:#60a5fa;">${toDisplay(f.blockTime)}</div></div>
                             <div><div class="flight-info-label">PIC</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.pic)}</div></div>
+                            <div><div class="flight-info-label">PIC Supv</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.picSupv)}</div></div>
+                            <div><div class="flight-info-label">CO-PILOT</div><div class="flight-info-value" style="color:#a78bfa;">${toDisplay(f.coPilot)}</div></div>
+                            <div><div class="flight-info-label">TR</div><div class="flight-info-value" style="color:#fb923c;">${toDisplay(f.tr)}</div></div>
                             <div><div class="flight-info-label">NIGHT</div><div class="flight-info-value" style="color:#8b5cf6;">${toDisplay(f.night)}</div></div>
-                            <div><div class="flight-info-label">TO/LD</div><div class="flight-info-value">${f.toCount||0}/${f.ldCount||0}</div></div>
+                            <div><div class="flight-info-label">INST</div><div class="flight-info-value" style="color:#fbbf24;">${toDisplay(f.instTime)}</div></div>
+                            <div><div class="flight-info-label">TO</div><div class="flight-info-value" style="color:#ec4899;">${f.toCount||0}</div></div>
+                            <div><div class="flight-info-label">LD</div><div class="flight-info-value" style="color:#06b6d4;">${f.ldCount||0}</div></div>
                         </div>
+                        ${details ? `
+                            <div class="flight-details">
+                                ${f.remark ? `<div class="detail-item"><strong>💬 비고:</strong> ${f.remark}</div>` : ''}
+                                ${f.wx ? `<div class="detail-item"><strong>🌤️ 기상:</strong> ${f.wx}</div>` : ''}
+                                ${f.landingCmt ? `<div class="detail-item"><strong>🛬 착륙:</strong> ${f.landingCmt}</div>` : ''}
+                                ${f.clearance ? `<div class="detail-item"><strong>📡 Clearance:</strong> ${f.clearance}</div>` : ''}
+                                ${f.tip ? `<div class="detail-item"><strong>📋 TIP:</strong> ${f.tip}</div>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -698,11 +860,13 @@
         }
         
         function updateStats() {
-            let block=0, pic=0, picSupv=0, night=0, inst=0, to=0, ld=0;
+            let block=0, pic=0, picSupv=0, coPilot=0, tr=0, night=0, inst=0, to=0, ld=0;
             flights.forEach(f => {
                 block += f.blockTime || 0;
                 pic += f.pic || 0;
                 picSupv += f.picSupv || 0;
+                coPilot += f.coPilot || 0;
+                tr += f.tr || 0;
                 night += f.night || 0;
                 inst += f.instTime || 0;
                 to += f.toCount || 0;
@@ -724,58 +888,175 @@
             document.getElementById('prevLD').textContent = `이전: ${prev.ld}`;
         }
         
-        function applyFilters() {
-            const searchText = document.getElementById('searchText')?.value.toUpperCase() || '';
-            const dateFrom = document.getElementById('dateFrom')?.value || '';
-            const dateTo = document.getElementById('dateTo')?.value || '';
-            const aircraft = document.getElementById('aircraftFilter')?.value || '';
-            const from = document.getElementById('fromFilter')?.value || '';
-            const to = document.getElementById('toFilter')?.value || '';
+        function importExcel(e) {
+            const file = e.target.files[0];
+            if (!file) return;
             
-            let filtered = flights.filter(f => {
-                if (searchText && ![f.fltNo, f.from, f.to, f.remark].join(' ').toUpperCase().includes(searchText)) return false;
-                if (dateFrom && f.date < dateFrom) return false;
-                if (dateTo && f.date > dateTo) return false;
-                if (aircraft && f.aircraft !== aircraft) return false;
-                if (from && f.from !== from) return false;
-                if (to && f.to !== to) return false;
-                return true;
-            });
+            console.log('=== Excel 가져오기 시작 ===');
+            console.log('파일:', file.name);
             
-            render(filtered);
-        }
-        
-        function clearFilters() {
-            document.getElementById('searchText').value = '';
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
-            document.getElementById('aircraftFilter').value = '';
-            document.getElementById('fromFilter').value = '';
-            document.getElementById('toFilter').value = '';
-            applyFilters();
-        }
-        
-        function updateFilterOptions() {
-            const aircrafts = [...new Set(flights.map(f => f.aircraft))].sort();
-            const froms = [...new Set(flights.map(f => f.from))].sort();
-            const tos = [...new Set(flights.map(f => f.to))].sort();
-            
-            const updateSelect = (id, items) => {
-                const sel = document.getElementById(id);
-                if (!sel) return;
-                const current = sel.value;
-                sel.innerHTML = '<option value="">전체</option>' + 
-                    items.map(i => `<option value="${i}">${i}</option>`).join('');
-                sel.value = current;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array', cellDates: false, raw: false });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    
+                    console.log('워크북 로드 완료');
+                    console.log('시트:', wb.SheetNames[0]);
+                    
+                    // Row 6 = 이전 누적
+                    console.log('\n[Row 6 - 이전 누적 데이터]');
+                    console.log('K6:', ws['K6']);
+                    console.log('G6:', ws['G6']);
+                    console.log('H6:', ws['H6']);
+                    
+                    // 시간 파싱 함수 (개선)
+                    const parseTime = (cellRef) => {
+                        const cell = ws[cellRef];
+                        if (!cell || !cell.v) return 0;
+                        
+                        console.log(`${cellRef}:`, cell.v, `(type: ${cell.t})`);
+                        
+                        // 숫자인 경우 (일 단위)
+                        if (typeof cell.v === 'number') {
+                            const hours = cell.v * 24;
+                            console.log(`  → ${hours.toFixed(2)} 시간`);
+                            return hours;
+                        }
+                        
+                        // 텍스트 "HH:MM" 형식
+                        if (typeof cell.v === 'string') {
+                            const match = cell.v.match(/(\d+):(\d+)/);
+                            if (match) {
+                                const hours = parseInt(match[1]) + parseInt(match[2]) / 60;
+                                console.log(`  → ${hours.toFixed(2)} 시간`);
+                                return hours;
+                            }
+                        }
+                        
+                        // 포맷된 문자열 (w 속성)
+                        if (cell.w) {
+                            const match = cell.w.match(/(\d+):(\d+)/);
+                            if (match) {
+                                const hours = parseInt(match[1]) + parseInt(match[2]) / 60;
+                                console.log(`  → ${hours.toFixed(2)} 시간 (from w)`);
+                                return hours;
+                            }
+                        }
+                        
+                        console.log(`  → 0 시간 (파싱 실패)`);
+                        return 0;
+                    };
+                    
+                    prev = {
+                        block: parseTime('K6'),
+                        pic: parseTime('G6'),
+                        picSupv: parseTime('H6'),
+                        coPilot: parseTime('I6'),
+                        tr: parseTime('J6'),
+                        night: parseTime('L6'),
+                        inst: parseTime('M6'),
+                        to: (parseInt(ws['O6']?.v || 0)) + (parseInt(ws['P6']?.v || 0)),
+                        ld: (parseInt(ws['Q6']?.v || 0)) + (parseInt(ws['R6']?.v || 0))
+                    };
+                    
+                    console.log('\n이전 누적 데이터:', prev);
+                    localStorage.setItem('prev_v3', JSON.stringify(prev));
+                    
+                    // Row 7부터 비행 기록
+                    console.log('\n[비행 기록 가져오기]');
+                    let imported = 0;
+                    for (let row = 7; row <= 200; row++) {
+                        const cellA = ws[`A${row}`];
+                        const cellB = ws[`B${row}`];
+                        
+                        if (!cellA || !cellB) break;
+                        
+                        const dateStr = cellA.w || cellA.v?.toString() || '';
+                        if (dateStr.includes('2023-2025') || dateStr.includes('Total')) {
+                            console.log(`Row ${row}: 종료 (${dateStr})`);
+                            break;
+                        }
+                        
+                        const flight = {
+                            id: Date.now() + row,
+                            date: dateStr.split('T')[0].split(' ')[0],
+                            aircraft: ws[`B${row}`]?.w || ws[`B${row}`]?.v || '',
+                            fltNo: ws[`D${row}`]?.w || ws[`D${row}`]?.v || '',
+                            from: ws[`E${row}`]?.w || ws[`E${row}`]?.v || '',
+                            to: ws[`F${row}`]?.w || ws[`F${row}`]?.v || '',
+                            rampOut: '',
+                            takeoff: '',
+                            landing: '',
+                            rampIn: '',
+                            blockTime: parseTime(`K${row}`),
+                            instTime: parseTime(`M${row}`),
+                            pic: parseTime(`G${row}`),
+                            picSupv: parseTime(`H${row}`),
+                            coPilot: parseTime(`I${row}`),
+                            tr: parseTime(`J${row}`),
+                            night: parseTime(`L${row}`),
+                            toCount: (parseInt(ws[`O${row}`]?.v || 0)) + (parseInt(ws[`P${row}`]?.v || 0)),
+                            ldCount: (parseInt(ws[`Q${row}`]?.v || 0)) + (parseInt(ws[`R${row}`]?.v || 0)),
+                            remark: ws[`S${row}`]?.w || ws[`S${row}`]?.v || '',
+                            wx: ws[`AN${row}`]?.w || ws[`AN${row}`]?.v || '',
+                            landingCmt: ws[`AO${row}`]?.w || ws[`AO${row}`]?.v || '',
+                            clearance: ws[`AP${row}`]?.w || ws[`AP${row}`]?.v || '',
+                            tip: ws[`AQ${row}`]?.w || ws[`AQ${row}`]?.v || ''
+                        };
+                        
+                        flights.push(flight);
+                        imported++;
+                        
+                        if (imported <= 3) {
+                            console.log(`Row ${row}:`, flight);
+                        }
+                    }
+                    
+                    console.log(`\n총 ${imported}개 비행 가져옴`);
+                    
+                    save();
+                    alert(`✅ ${imported}개 비행 기록 가져오기 완료!\n\n이전 누적:\n- Block: ${toDisplay(prev.block)}\n- PIC: ${toDisplay(prev.pic + prev.picSupv)}\n- Night: ${toDisplay(prev.night)}\n- Inst: ${toDisplay(prev.inst)}\n\nConsole (F12)에서 상세 로그 확인 가능`);
+                } catch (err) {
+                    console.error('Excel 가져오기 오류:', err);
+                    alert('오류: ' + err.message + '\n\nConsole (F12)에서 상세 오류 확인');
+                }
             };
-            
-            updateSelect('aircraftFilter', aircrafts);
-            updateSelect('fromFilter', froms);
-            updateSelect('toFilter', tos);
+            reader.readAsArrayBuffer(file);
         }
         
-        // 초기화
-        checkFirebaseConfig();
+        function exportExcel() {
+            console.log('=== Excel 내보내기 ===');
+            const wb = XLSX.utils.book_new();
+            const data = [
+                ['Date', 'Aircraft', 'FLT_NO', 'From', 'To', 'BLOCK', 'PIC', 'PIC_Supv', 'CoPilot', 'TR', 'NIGHT', 'INST', 'TO', 'LD', 'Remark', 'Wx', 'Landing', 'Clearance', 'TIP']
+            ];
+            flights.forEach(f => {
+                data.push([
+                    f.date, f.aircraft, f.fltNo || '', f.from, f.to,
+                    toDisplay(f.blockTime),
+                    toDisplay(f.pic),
+                    toDisplay(f.picSupv),
+                    toDisplay(f.coPilot),
+                    toDisplay(f.tr),
+                    toDisplay(f.night),
+                    toDisplay(f.instTime),
+                    f.toCount, f.ldCount,
+                    f.remark, f.wx, f.landingCmt, f.clearance, f.tip
+                ]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, 'Log');
+            const filename = `LOG_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, filename);
+            console.log('Excel 내보내기 완료:', filename);
+        }
+        
+        render(flights);
+        updateFilterOptions();
+        
+        console.log('=== 앱 준비 완료 ===');
     </script>
 </body>
 </html>
