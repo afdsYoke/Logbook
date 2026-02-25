@@ -4,24 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>비행시간 기록부</title>
+    <title>비행시간 기록부 - Cloud Sync</title>
     
-    <!-- GitHub Pages Debug Info -->
-    <script>
-        console.log('=== GitHub Pages Debug Info ===');
-        console.log('현재 URL:', window.location.href);
-        console.log('Protocol:', window.location.protocol);
-        console.log('Host:', window.location.host);
-        console.log('LocalStorage 사용 가능:', typeof(Storage) !== "undefined");
-        
-        // CDN 로딩 체크
-        window.cdnLoadStart = Date.now();
-    </script>
-    
-    <!-- HTTPS로 SheetJS 로드 (GitHub Pages 호환) -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" 
-            onerror="console.error('❌ SheetJS CDN 로딩 실패!'); alert('Excel 라이브러리 로딩 실패! 인터넷 연결을 확인하세요.');"
-            onload="console.log('✅ SheetJS 로드 완료 (' + (Date.now() - window.cdnLoadStart) + 'ms)');">
+    <!-- Firebase SDK v9 (modular) -->
+    <script type="module">
+        // Firebase 설정을 전역으로
+        window.firebaseConfig = null;
+        window.firebaseApp = null;
+        window.firebaseDb = null;
+        window.firebaseAuth = null;
     </script>
     
     <style>
@@ -35,18 +26,51 @@
         }
         .container { max-width: 1600px; margin: 0 auto; }
         
-        /* Debug Banner */
-        .debug-banner {
-            background: rgba(245, 158, 11, 0.2);
-            border: 2px solid rgba(245, 158, 11, 0.4);
-            padding: 15px;
-            border-radius: 12px;
+        /* Firebase Setup Panel */
+        .setup-panel {
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid rgba(59, 130, 246, 0.4);
+            padding: 25px;
+            border-radius: 16px;
             margin-bottom: 20px;
-            display: none;
         }
-        .debug-banner.show { display: block; }
-        .debug-banner h3 { color: #fbbf24; margin-bottom: 10px; }
-        .debug-info { font-size: 12px; color: #cbd5e1; font-family: monospace; }
+        .setup-panel h2 { color: #60a5fa; margin-bottom: 15px; }
+        .setup-panel p { margin-bottom: 15px; line-height: 1.6; }
+        .setup-form { display: grid; gap: 12px; margin-top: 20px; }
+        .setup-input {
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        .setup-input::placeholder { color: #64748b; }
+        
+        .sync-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .sync-status.connecting {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+        .sync-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+        .sync-status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
         
         .header {
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
@@ -56,23 +80,9 @@
             box-shadow: 0 10px 40px rgba(37, 99, 235, 0.4);
         }
         .header h1 { font-size: 28px; margin-bottom: 5px; }
-        .status-indicator {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        .status-ok {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-        .status-error {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-        }
+        
+        #app { display: none; }
+        #app.ready { display: block; }
         
         .main-stats {
             display: grid;
@@ -119,36 +129,6 @@
         .btn-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 2px solid rgba(245, 158, 11, 0.4); }
         .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 2px solid rgba(239, 68, 68, 0.4); }
         
-        .filter-bar {
-            background: rgba(30, 41, 59, 0.6);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            border: 1px solid rgba(51, 65, 85, 0.6);
-        }
-        .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
-        .filter-group { display: flex; flex-direction: column; }
-        .filter-label { font-size: 11px; color: #94a3b8; margin-bottom: 5px; }
-        .filter-input, .filter-select {
-            padding: 8px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(51, 65, 85, 0.6);
-            border-radius: 8px;
-            color: #e2e8f0;
-            font-size: 13px;
-        }
-        .filter-btn-group { display: flex; gap: 8px; align-items: flex-end; }
-        .filter-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.4);
-        }
-        
         .card {
             background: rgba(30, 41, 59, 0.6);
             border-radius: 14px;
@@ -179,20 +159,6 @@
         .flight-info-label { font-size: 9px; color: #64748b; margin-bottom: 2px; }
         .flight-info-value { font-size: 12px; font-weight: 600; }
         
-        .flight-details {
-            background: rgba(59, 130, 246, 0.05);
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border-left: 3px solid #3b82f6;
-        }
-        .detail-item {
-            font-size: 11px;
-            color: #cbd5e1;
-            margin-bottom: 5px;
-        }
-        .detail-item strong { color: #94a3b8; }
-        
         .action-btns {
             position: absolute;
             top: 10px;
@@ -214,442 +180,129 @@
             border-color: rgba(239, 68, 68, 0.4);
             color: #f87171;
         }
-        .action-btn:hover { opacity: 0.8; }
         
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.92);
-            z-index: 1000;
-            padding: 15px;
-            overflow-y: auto;
-        }
-        .modal.show { display: flex; align-items: flex-start; justify-content: center; padding-top: 20px; }
-        .modal-content {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-radius: 16px;
-            padding: 25px;
-            max-width: 900px;
-            width: 100%;
-            border: 1px solid rgba(51, 65, 85, 0.6);
-            margin-bottom: 40px;
-        }
-        
-        .form-group { margin-bottom: 12px; }
-        .form-group label { 
-            display: block; 
-            margin-bottom: 6px; 
-            font-size: 12px; 
-            font-weight: 600; 
-            color: #94a3b8; 
-        }
-        .form-group input, .form-group textarea {
-            width: 100%;
-            padding: 11px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(51, 65, 85, 0.6);
-            border-radius: 8px;
-            color: #e2e8f0;
-            font-size: 14px;
-        }
-        .form-group textarea { min-height: 60px; resize: vertical; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        .form-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
-        .form-section { 
-            background: rgba(59, 130, 246, 0.08); 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-bottom: 15px;
-            border-left: 4px solid #3b82f6;
-        }
-        .form-section h3 { font-size: 15px; color: #60a5fa; margin-bottom: 12px; }
-        
-        .time-input-group { display: flex; gap: 6px; align-items: center; }
-        .time-input { flex: 1; text-align: center; }
-        .time-separator { font-size: 18px; font-weight: 700; color: #94a3b8; }
-        
-        .calc-display {
-            background: rgba(16, 185, 129, 0.1);
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border-left: 3px solid #10b981;
-        }
-        .calc-label { font-size: 11px; color: #6ee7b7; margin-bottom: 5px; }
-        .calc-value { font-size: 16px; color: #34d399; font-weight: 700; font-family: 'Courier New', monospace; }
-        
-        input[type="file"] { display: none; }
         .empty-state { text-align: center; padding: 50px 20px; color: #64748b; }
         
+        .help-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
         @media (max-width: 768px) {
-            .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
             .main-stats { grid-template-columns: repeat(2, 1fr); }
-            .filter-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Debug Banner -->
-        <div id="debugBanner" class="debug-banner">
-            <h3>🔧 디버그 정보</h3>
-            <div class="debug-info" id="debugInfo"></div>
+        <!-- Firebase Setup -->
+        <div id="setupPanel" class="setup-panel">
+            <h2>🔥 Firebase 클라우드 동기화 설정</h2>
+            <p>
+                PC와 폰에서 데이터를 동기화하려면 Firebase 설정이 필요합니다.<br>
+                <strong>무료</strong>이며, 설정은 한 번만 하면 됩니다!
+            </p>
+            
+            <div class="setup-form">
+                <input type="text" class="setup-input" id="apiKey" placeholder="API Key (예: AIzaSyABC123...)" />
+                <input type="text" class="setup-input" id="projectId" placeholder="Project ID (예: my-logbook-12345)" />
+                <input type="text" class="setup-input" id="appId" placeholder="App ID (예: 1:1234567890:web:abc123)" />
+                
+                <button class="btn-primary" onclick="saveFirebaseConfig()" style="margin-top: 10px;">
+                    ✅ 저장하고 시작하기
+                </button>
+                
+                <button class="btn-secondary" onclick="showFirebaseGuide()" style="margin-top: 5px;">
+                    📖 Firebase 설정 방법 보기
+                </button>
+            </div>
+            
+            <div id="setupStatus" style="margin-top: 15px; color: #f87171;"></div>
         </div>
         
         <div class="header">
             <h1>✈️ Pilot Flight Logbook</h1>
-            <p>Professional Flight Time Recording System</p>
-            <div class="status-indicator status-ok" id="statusIndicator">
-                ⚙️ 초기화 중...
+            <p>Professional Flight Time Recording System - Cloud Sync</p>
+            <div class="sync-status connecting" id="syncStatus">
+                🔄 Firebase 설정 대기 중...
             </div>
         </div>
 
-        <div class="main-stats">
-            <div class="main-stat-card" style="border-left-color: #3b82f6;">
-                <h3>Total Block Time</h3>
-                <div class="value" style="color: #3b82f6;" id="totalBlock">0:00</div>
-                <div class="subtext" id="prevBlock">이전: 0:00</div>
+        <div id="app">
+            <div class="main-stats">
+                <div class="main-stat-card" style="border-left-color: #3b82f6;">
+                    <h3>Total Block Time</h3>
+                    <div class="value" style="color: #3b82f6;" id="totalBlock">0:00</div>
+                    <div class="subtext" id="prevBlock">이전: 0:00</div>
+                </div>
+                <div class="main-stat-card" style="border-left-color: #10b981;">
+                    <h3>Total PIC</h3>
+                    <div class="value" style="color: #10b981;" id="totalPIC">0:00</div>
+                    <div class="subtext" id="prevPIC">이전: 0:00</div>
+                </div>
+                <div class="main-stat-card" style="border-left-color: #8b5cf6;">
+                    <h3>Night Time</h3>
+                    <div class="value" style="color: #8b5cf6;" id="totalNight">0:00</div>
+                    <div class="subtext" id="prevNight">이전: 0:00</div>
+                </div>
+                <div class="main-stat-card" style="border-left-color: #f59e0b;">
+                    <h3>Instrument</h3>
+                    <div class="value" style="color: #f59e0b;" id="totalInst">0:00</div>
+                    <div class="subtext" id="prevInst">이전: 0:00</div>
+                </div>
+                <div class="main-stat-card" style="border-left-color: #ec4899;">
+                    <h3>Takeoffs</h3>
+                    <div class="value" style="color: #ec4899;" id="totalTO">0</div>
+                    <div class="subtext" id="prevTO">이전: 0</div>
+                </div>
+                <div class="main-stat-card" style="border-left-color: #06b6d4;">
+                    <h3>Landings</h3>
+                    <div class="value" style="color: #06b6d4;" id="totalLD">0</div>
+                    <div class="subtext" id="prevLD">이전: 0</div>
+                </div>
             </div>
-            <div class="main-stat-card" style="border-left-color: #10b981;">
-                <h3>Total PIC</h3>
-                <div class="value" style="color: #10b981;" id="totalPIC">0:00</div>
-                <div class="subtext" id="prevPIC">이전: 0:00</div>
-            </div>
-            <div class="main-stat-card" style="border-left-color: #8b5cf6;">
-                <h3>Night Time</h3>
-                <div class="value" style="color: #8b5cf6;" id="totalNight">0:00</div>
-                <div class="subtext" id="prevNight">이전: 0:00</div>
-            </div>
-            <div class="main-stat-card" style="border-left-color: #f59e0b;">
-                <h3>Instrument</h3>
-                <div class="value" style="color: #f59e0b;" id="totalInst">0:00</div>
-                <div class="subtext" id="prevInst">이전: 0:00</div>
-            </div>
-            <div class="main-stat-card" style="border-left-color: #ec4899;">
-                <h3>Takeoffs</h3>
-                <div class="value" style="color: #ec4899;" id="totalTO">0</div>
-                <div class="subtext" id="prevTO">이전: 0</div>
-            </div>
-            <div class="main-stat-card" style="border-left-color: #06b6d4;">
-                <h3>Landings</h3>
-                <div class="value" style="color: #06b6d4;" id="totalLD">0</div>
-                <div class="subtext" id="prevLD">이전: 0</div>
-            </div>
-        </div>
 
-        <div class="buttons">
-            <button class="btn-primary" onclick="testShowAddModal()">➕ 비행 추가</button>
-            <label class="btn-secondary" style="display: inline-block; cursor: pointer;">
-                📤 엑셀 가져오기
-                <input type="file" accept=".xlsx,.xls" onchange="testImportExcel(event)">
-            </label>
-            <button class="btn-warning" onclick="testExportExcel()">📥 엑셀 내보내기</button>
-            <button class="btn-danger" onclick="testResetAll()">🔄 전체 리셋</button>
-        </div>
-
-        <div class="filter-bar">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">🔍 검색</label>
-                    <input type="text" class="filter-input" id="searchText" placeholder="편명, 공항, 비고...">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">📅 날짜 (시작)</label>
-                    <input type="date" class="filter-input" id="dateFrom">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">📅 날짜 (종료)</label>
-                    <input type="date" class="filter-input" id="dateTo">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">✈️ 항공기</label>
-                    <select class="filter-select" id="aircraftFilter">
-                        <option value="">전체</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">🛫 출발지</label>
-                    <select class="filter-select" id="fromFilter">
-                        <option value="">전체</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">🛬 도착지</label>
-                    <select class="filter-select" id="toFilter">
-                        <option value="">전체</option>
-                    </select>
-                </div>
+            <div class="buttons">
+                <button class="btn-primary" onclick="addFlight()">➕ 비행 추가</button>
+                <button class="btn-warning" onclick="testSync()">🔄 동기화 테스트</button>
+                <button class="btn-danger" onclick="resetAll()">🔄 전체 리셋</button>
             </div>
-            <div class="filter-btn-group">
-                <button class="filter-btn" onclick="applyFilters()">✅ 필터 적용</button>
-                <button class="filter-btn" onclick="clearFilters()">❌ 필터 초기화</button>
-            </div>
-        </div>
 
-        <div class="card">
-            <h2 style="margin-bottom: 18px; font-size: 19px;">비행 기록 (<span id="count">0</span>)</h2>
-            <div id="list">
-                <div class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 12px;">✈️</div>
-                    <p>비행 기록이 없습니다.</p>
+            <div class="card">
+                <h2 style="margin-bottom: 18px; font-size: 19px;">비행 기록 (<span id="count">0</span>)</h2>
+                <div id="list">
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 12px;">✈️</div>
+                        <p>비행 기록이 없습니다.</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <h2 style="margin-bottom: 20px;" id="modalTitle">✈️ 새 비행 기록</h2>
-            <form onsubmit="saveFlight(event)">
-                <input type="hidden" id="editId">
-                
-                <div class="form-section">
-                    <h3>📅 기본 정보</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>날짜 *</label>
-                            <input type="date" id="date" required>
-                        </div>
-                        <div class="form-group">
-                            <label>항공기 *</label>
-                            <input type="text" id="aircraft" placeholder="B737" required>
-                        </div>
-                    </div>
-                    <div class="form-row-3">
-                        <div class="form-group">
-                            <label>FLT NO</label>
-                            <input type="text" id="fltNo" placeholder="KE123">
-                        </div>
-                        <div class="form-group">
-                            <label>출발 *</label>
-                            <input type="text" id="from" placeholder="RKSI" required>
-                        </div>
-                        <div class="form-group">
-                            <label>도착 *</label>
-                            <input type="text" id="to" placeholder="RJAA" required>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h3>⏱️ 시간 입력 (HH:MM)</h3>
-                    <div class="form-row-4">
-                        <div class="form-group">
-                            <label>RAMP OUT</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="rampOutH" min="0" max="23" placeholder="HH">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="rampOutM" min="0" max="59" placeholder="MM">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>TAKEOFF</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="takeoffH" min="0" max="23" placeholder="HH">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="takeoffM" min="0" max="59" placeholder="MM">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>LANDING</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="landingH" min="0" max="23" placeholder="HH">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="landingM" min="0" max="59" placeholder="MM">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>RAMP IN</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="rampInH" min="0" max="23" placeholder="HH">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="rampInM" min="0" max="59" placeholder="MM">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="calc-display">
-                        <div class="calc-label">자동 계산:</div>
-                        <div class="calc-value">BLOCK TIME: <span id="calcBlock">--</span> | INST TIME: <span id="calcInst">--</span></div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h3>👨‍✈️ 역할별 시간 (60진법: 시:분)</h3>
-                    <div class="form-row-4">
-                        <div class="form-group">
-                            <label>PIC</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="picH" min="0" placeholder="시">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="picM" min="0" max="59" placeholder="분">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>PIC under SUPVSN</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="picSupvH" min="0" placeholder="시">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="picSupvM" min="0" max="59" placeholder="분">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>CO-PILOT</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="coPilotH" min="0" placeholder="시">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="coPilotM" min="0" max="59" placeholder="분">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>TR</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="trH" min="0" placeholder="시">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="trM" min="0" max="59" placeholder="분">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>NIGHT</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="nightH" min="0" placeholder="시">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="nightM" min="0" max="59" placeholder="분">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h3>🛬 이착륙</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Takeoffs (횟수)</label>
-                            <input type="number" id="toCount" placeholder="1" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Landings (횟수)</label>
-                            <input type="number" id="ldCount" placeholder="1" min="0">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h3>📝 상세 정보</h3>
-                    <div class="form-group">
-                        <label>비고</label>
-                        <input type="text" id="remark" placeholder="C 김철수">
-                    </div>
-                    <div class="form-group">
-                        <label>기상 (Wx Dest)</label>
-                        <input type="text" id="wx" placeholder="CAVOK">
-                    </div>
-                    <div class="form-group">
-                        <label>Landing Comment</label>
-                        <textarea id="landingCmt"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Clearance</label>
-                        <textarea id="clearance"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>TIP</label>
-                        <textarea id="tip"></textarea>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn-primary" style="flex: 1; padding: 14px;">저장</button>
-                    <button type="button" class="btn-secondary" style="flex: 1; padding: 14px;" onclick="closeModal()">취소</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // ===================================
-        // GitHub Pages 호환성 체크
-        // ===================================
+    <!-- Firebase SDK (CDN) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
         
-        (function() {
-            console.log('=== 시스템 체크 시작 ===');
-            
-            const debugInfo = [];
-            let hasErrors = false;
-            
-            // 1. LocalStorage 체크
-            try {
-                localStorage.setItem('test', 'test');
-                localStorage.removeItem('test');
-                console.log('✅ LocalStorage 사용 가능');
-                debugInfo.push('✅ LocalStorage: OK');
-            } catch (e) {
-                console.error('❌ LocalStorage 사용 불가:', e);
-                debugInfo.push('❌ LocalStorage: FAIL - ' + e.message);
-                hasErrors = true;
-            }
-            
-            // 2. XLSX 라이브러리 체크
-            if (typeof XLSX !== 'undefined') {
-                console.log('✅ SheetJS 라이브러리 로드됨');
-                debugInfo.push('✅ SheetJS: OK');
-            } else {
-                console.error('❌ SheetJS 라이브러리 없음');
-                debugInfo.push('❌ SheetJS: FAIL');
-                hasErrors = true;
-            }
-            
-            // 3. 환경 정보
-            debugInfo.push('📍 URL: ' + window.location.href);
-            debugInfo.push('🔒 Protocol: ' + window.location.protocol);
-            debugInfo.push('🌐 Host: ' + window.location.host);
-            debugInfo.push('🖥️ UserAgent: ' + navigator.userAgent.substring(0, 50) + '...');
-            
-            // Debug Banner 표시
-            if (hasErrors || window.location.hostname.includes('github.io')) {
-                const banner = document.getElementById('debugBanner');
-                const info = document.getElementById('debugInfo');
-                banner.classList.add('show');
-                info.textContent = debugInfo.join('\n');
-            }
-            
-            // Status Indicator 업데이트
-            const status = document.getElementById('statusIndicator');
-            if (hasErrors) {
-                status.className = 'status-indicator status-error';
-                status.textContent = '❌ 초기화 실패 - F12 Console 확인';
-            } else {
-                status.className = 'status-indicator status-ok';
-                status.textContent = '✅ 시스템 정상';
-            }
-            
-            console.log('=== 시스템 체크 완료 ===');
-            console.log(debugInfo.join('\n'));
-        })();
+        console.log('🔥 Firebase SDK 로드 완료');
         
-        // ===================================
-        // 앱 로직 (동일하지만 에러 처리 강화)
-        // ===================================
-        
+        // 전역 변수
+        let db = null;
+        let auth = null;
+        let userId = null;
         let flights = [];
         let prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
+        let unsubscribe = null;
         
-        // LocalStorage 로드 (에러 처리)
-        try {
-            flights = JSON.parse(localStorage.getItem('flights_v3') || '[]');
-            prev = JSON.parse(localStorage.getItem('prev_v3') || '{"block":0,"pic":0,"picSupv":0,"coPilot":0,"tr":0,"night":0,"inst":0,"to":0,"ld":0}');
-            console.log('✅ 데이터 로드 완료:', flights.length, '개 비행');
-        } catch (e) {
-            console.error('❌ 데이터 로드 실패:', e);
-            alert('데이터 로드 오류: ' + e.message);
-        }
-        
+        // 유틸리티 함수
         function pad(n) { return String(n).padStart(2, '0'); }
         function toDisplay(dec) {
             if (!dec) return '0:00';
@@ -657,270 +310,190 @@
             const m = Math.round((dec - h) * 60);
             return `${h}:${pad(m)}`;
         }
-        function toDec(h, m) { return (h || 0) + (m || 0) / 60; }
-        function timeStr(h, m) {
-            if (!h && !m) return '';
-            return `${pad(h||0)}:${pad(m||0)}`;
+        
+        function setSyncStatus(status, text) {
+            const el = document.getElementById('syncStatus');
+            el.className = `sync-status ${status}`;
+            el.textContent = text;
         }
         
-        function calcTimes(rampOut, takeoff, landing, rampIn) {
-            if (!rampOut || !rampIn) return { block: 0, inst: 0 };
-            const toMin = (t) => {
-                if (!t) return 0;
-                const [h, m] = t.split(':').map(Number);
-                return h * 60 + m;
-            };
-            const rampOutMin = toMin(rampOut);
-            const rampInMin = toMin(rampIn);
-            let blockMin = rampInMin - rampOutMin;
-            if (blockMin < 0) blockMin += 1440;
-            let instMin = 0;
-            if (takeoff && landing) {
-                const toMin_ = toMin(takeoff);
-                const ldMin = toMin(landing);
-                instMin = ldMin - toMin_;
-                if (instMin < 0) instMin += 1440;
-            }
-            return { block: blockMin / 60, inst: instMin / 60 };
-        }
-        
-        ['rampOutH', 'rampOutM', 'takeoffH', 'takeoffM', 'landingH', 'landingM', 'rampInH', 'rampInM'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener('input', updateCalc);
-        });
-        
-        function updateCalc() {
-            const rampOut = timeStr(document.getElementById('rampOutH').value, document.getElementById('rampOutM').value);
-            const takeoff = timeStr(document.getElementById('takeoffH').value, document.getElementById('takeoffM').value);
-            const landing = timeStr(document.getElementById('landingH').value, document.getElementById('landingM').value);
-            const rampIn = timeStr(document.getElementById('rampInH').value, document.getElementById('rampInM').value);
-            const times = calcTimes(rampOut, takeoff, landing, rampIn);
-            document.getElementById('calcBlock').textContent = times.block > 0 ? toDisplay(times.block) : '--';
-            document.getElementById('calcInst').textContent = times.inst > 0 ? toDisplay(times.inst) : '--';
-        }
-        
-        // Test functions with error handling
-        function testShowAddModal() {
-            console.log('👆 비행 추가 버튼 클릭됨');
+        // Firebase 초기화
+        async function initFirebase(config) {
             try {
-                document.getElementById('modalTitle').textContent = '✈️ 새 비행 기록';
-                document.getElementById('editId').value = '';
-                document.getElementById('modal').classList.add('show');
-                document.getElementById('date').value = new Date().toISOString().split('T')[0];
-                console.log('✅ 모달 열림');
-            } catch (e) {
-                console.error('❌ 모달 열기 실패:', e);
-                alert('오류: ' + e.message);
+                console.log('Firebase 초기화 시작...', config);
+                setSyncStatus('connecting', '🔄 연결 중...');
+                
+                // Firebase 앱 초기화
+                const app = initializeApp({
+                    apiKey: config.apiKey,
+                    authDomain: `${config.projectId}.firebaseapp.com`,
+                    projectId: config.projectId,
+                    storageBucket: `${config.projectId}.appspot.com`,
+                    appId: config.appId
+                });
+                
+                console.log('✅ Firebase 앱 초기화 완료');
+                
+                // Firestore 초기화
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                console.log('✅ Firestore 초기화 완료');
+                
+                // 익명 로그인
+                const userCredential = await signInAnonymously(auth);
+                userId = userCredential.user.uid;
+                
+                console.log('✅ 인증 완료. User ID:', userId);
+                
+                // 데이터 로드
+                await loadData();
+                
+                // 실시간 동기화 설정
+                setupRealtimeSync();
+                
+                // UI 표시
+                document.getElementById('setupPanel').style.display = 'none';
+                document.getElementById('app').classList.add('ready');
+                setSyncStatus('connected', '☁️ 클라우드 연결됨');
+                
+                console.log('✅ Firebase 초기화 완료!');
+                
+            } catch (error) {
+                console.error('❌ Firebase 초기화 실패:', error);
+                setSyncStatus('error', '❌ 연결 실패');
+                document.getElementById('setupStatus').textContent = 
+                    `오류: ${error.message}\n\n설정을 확인하고 다시 시도하세요.`;
             }
         }
         
-        function closeModal() {
-            console.log('모달 닫기');
-            document.getElementById('modal').classList.remove('show');
-            document.querySelector('form').reset();
-        }
-        
-        function showEditModal(id) {
-            const flight = flights.find(f => f.id === id);
-            if (!flight) return;
-            console.log('수정 모드:', id);
-            // ... (기존 코드와 동일)
-        }
-        
-        function saveFlight(e) {
-            e.preventDefault();
-            console.log('💾 비행 저장 시도');
-            
+        // 데이터 로드
+        async function loadData() {
             try {
-                const rampOut = timeStr(document.getElementById('rampOutH').value, document.getElementById('rampOutM').value);
-                const takeoff = timeStr(document.getElementById('takeoffH').value, document.getElementById('takeoffM').value);
-                const landing = timeStr(document.getElementById('landingH').value, document.getElementById('landingM').value);
-                const rampIn = timeStr(document.getElementById('rampInH').value, document.getElementById('rampInM').value);
-                const times = calcTimes(rampOut, takeoff, landing, rampIn);
+                console.log('데이터 로드 시작...');
                 
-                const data = {
-                    date: document.getElementById('date').value,
-                    aircraft: document.getElementById('aircraft').value,
-                    fltNo: document.getElementById('fltNo').value,
-                    from: document.getElementById('from').value.toUpperCase(),
-                    to: document.getElementById('to').value.toUpperCase(),
-                    rampOut: rampOut,
-                    takeoff: takeoff,
-                    landing: landing,
-                    rampIn: rampIn,
-                    blockTime: times.block,
-                    instTime: times.inst,
-                    pic: toDec(+document.getElementById('picH').value, +document.getElementById('picM').value),
-                    picSupv: toDec(+document.getElementById('picSupvH').value, +document.getElementById('picSupvM').value),
-                    coPilot: toDec(+document.getElementById('coPilotH').value, +document.getElementById('coPilotM').value),
-                    tr: toDec(+document.getElementById('trH').value, +document.getElementById('trM').value),
-                    night: toDec(+document.getElementById('nightH').value, +document.getElementById('nightM').value),
-                    toCount: +document.getElementById('toCount').value || 0,
-                    ldCount: +document.getElementById('ldCount').value || 0,
-                    remark: document.getElementById('remark').value,
-                    wx: document.getElementById('wx').value,
-                    landingCmt: document.getElementById('landingCmt').value,
-                    clearance: document.getElementById('clearance').value,
-                    tip: document.getElementById('tip').value
-                };
+                // 비행 기록 로드
+                const flightsRef = collection(db, 'users', userId, 'flights');
+                const snapshot = await getDocs(flightsRef);
                 
-                const editId = document.getElementById('editId').value;
-                if (editId) {
-                    const idx = flights.findIndex(f => f.id == editId);
-                    flights[idx] = { ...flights[idx], ...data };
-                    console.log('✅ 비행 수정:', editId);
-                } else {
-                    data.id = Date.now();
-                    flights.push(data);
-                    console.log('✅ 새 비행 추가:', data.id);
+                flights = [];
+                snapshot.forEach(doc => {
+                    flights.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log(`✅ ${flights.length}개 비행 기록 로드됨`);
+                
+                // 이전 누적 데이터 로드
+                const prevRef = doc(db, 'users', userId, 'settings', 'previous');
+                const prevDoc = await getDoc(prevRef);
+                
+                if (prevDoc.exists()) {
+                    prev = prevDoc.data();
+                    console.log('✅ 이전 누적 데이터 로드됨');
                 }
                 
-                save();
-                closeModal();
-            } catch (e) {
-                console.error('❌ 저장 실패:', e);
-                alert('저장 오류: ' + e.message + '\n\nF12 Console에서 상세 정보 확인');
+                render(flights);
+                
+            } catch (error) {
+                console.error('❌ 데이터 로드 실패:', error);
             }
         }
         
-        function deleteFlight(id) {
-            if (confirm('삭제하시겠습니까?')) {
-                console.log('🗑️ 삭제:', id);
-                flights = flights.filter(f => f.id !== id);
-                save();
-            }
-        }
-        
-        function testResetAll() {
-            if (confirm('⚠️ 전체 리셋하시겠습니까?')) {
-                if (confirm('정말 확실합니까?')) {
-                    console.log('🔄 전체 리셋');
-                    localStorage.removeItem('flights_v3');
-                    localStorage.removeItem('prev_v3');
-                    flights = [];
-                    prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
-                    render(flights);
-                    updateFilterOptions();
-                    alert('✅ 리셋 완료!');
-                }
-            }
-        }
-        
-        function save() {
-            try {
-                localStorage.setItem('flights_v3', JSON.stringify(flights));
-                console.log('✅ 저장 완료:', flights.length, '개');
-                applyFilters();
-                updateFilterOptions();
-            } catch (e) {
-                console.error('❌ 저장 실패:', e);
-                alert('저장 오류: ' + e.message);
-            }
-        }
-        
-        function updateFilterOptions() {
-            const aircrafts = [...new Set(flights.map(f => f.aircraft))].sort();
-            const froms = [...new Set(flights.map(f => f.from))].sort();
-            const tos = [...new Set(flights.map(f => f.to))].sort();
+        // 실시간 동기화
+        function setupRealtimeSync() {
+            const flightsRef = collection(db, 'users', userId, 'flights');
             
-            const updateSelect = (id, items) => {
-                const sel = document.getElementById(id);
-                const current = sel.value;
-                sel.innerHTML = '<option value="">전체</option>' + 
-                    items.map(i => `<option value="${i}">${i}</option>`).join('');
-                sel.value = current;
-            };
-            
-            updateSelect('aircraftFilter', aircrafts);
-            updateSelect('fromFilter', froms);
-            updateSelect('toFilter', tos);
-        }
-        
-        function applyFilters() {
-            const searchText = document.getElementById('searchText').value.toUpperCase();
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            const aircraft = document.getElementById('aircraftFilter').value;
-            const from = document.getElementById('fromFilter').value;
-            const to = document.getElementById('toFilter').value;
-            
-            let filtered = flights.filter(f => {
-                if (searchText && ![f.fltNo, f.from, f.to, f.remark, f.clearance].join(' ').toUpperCase().includes(searchText)) return false;
-                if (dateFrom && f.date < dateFrom) return false;
-                if (dateTo && f.date > dateTo) return false;
-                if (aircraft && f.aircraft !== aircraft) return false;
-                if (from && f.from !== from) return false;
-                if (to && f.to !== to) return false;
-                return true;
+            unsubscribe = onSnapshot(flightsRef, (snapshot) => {
+                console.log('🔄 실시간 업데이트 감지');
+                
+                flights = [];
+                snapshot.forEach(doc => {
+                    flights.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                render(flights);
             });
             
-            render(filtered);
+            console.log('✅ 실시간 동기화 활성화');
         }
         
-        function clearFilters() {
-            document.getElementById('searchText').value = '';
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
-            document.getElementById('aircraftFilter').value = '';
-            document.getElementById('fromFilter').value = '';
-            document.getElementById('toFilter').value = '';
-            applyFilters();
+        // 비행 추가
+        async function saveFlight(flightData) {
+            try {
+                setSyncStatus('connecting', '🔄 저장 중...');
+                
+                const flightId = flightData.id || `flight_${Date.now()}`;
+                const flightRef = doc(db, 'users', userId, 'flights', flightId);
+                
+                await setDoc(flightRef, flightData);
+                
+                console.log('✅ 비행 저장 완료:', flightId);
+                setSyncStatus('connected', '☁️ 클라우드 연결됨');
+                
+            } catch (error) {
+                console.error('❌ 저장 실패:', error);
+                setSyncStatus('error', '❌ 저장 실패');
+                alert('저장 실패: ' + error.message);
+            }
         }
         
+        // 비행 삭제
+        async function deleteFlight(flightId) {
+            try {
+                setSyncStatus('connecting', '🔄 삭제 중...');
+                
+                const flightRef = doc(db, 'users', userId, 'flights', flightId);
+                await deleteDoc(flightRef);
+                
+                console.log('✅ 비행 삭제 완료:', flightId);
+                setSyncStatus('connected', '☁️ 클라우드 연결됨');
+                
+            } catch (error) {
+                console.error('❌ 삭제 실패:', error);
+                alert('삭제 실패: ' + error.message);
+            }
+        }
+        
+        // 렌더링
         function render(list) {
             document.getElementById('count').textContent = list.length;
+            
             if (list.length === 0) {
-                document.getElementById('list').innerHTML = '<div class="empty-state"><div style="font-size:48px;">✈️</div><p>비행 기록이 없습니다.</p></div>';
+                document.getElementById('list').innerHTML = 
+                    '<div class="empty-state"><div style="font-size:48px;">✈️</div><p>비행 기록이 없습니다.</p></div>';
                 updateStats();
                 return;
             }
             
-            document.getElementById('list').innerHTML = list.slice().reverse().map(f => {
-                const details = f.remark || f.wx || f.landingCmt || f.clearance || f.tip;
-                return `
-                    <div class="flight-row">
-                        <div class="action-btns">
-                            <button class="action-btn" onclick="showEditModal(${f.id})">✏️ 수정</button>
-                            <button class="action-btn delete" onclick="deleteFlight(${f.id})">🗑️</button>
-                        </div>
-                        <div class="flight-info">
-                            <div><div class="flight-info-label">날짜</div><div class="flight-info-value">${f.date}</div></div>
-                            <div><div class="flight-info-label">항공기</div><div class="flight-info-value">${f.aircraft}</div></div>
-                            <div><div class="flight-info-label">FLT NO</div><div class="flight-info-value">${f.fltNo||'-'}</div></div>
-                            <div><div class="flight-info-label">구간</div><div class="flight-info-value">${f.from}→${f.to}</div></div>
-                            <div><div class="flight-info-label">BLOCK</div><div class="flight-info-value" style="color:#60a5fa;">${toDisplay(f.blockTime)}</div></div>
-                            <div><div class="flight-info-label">PIC</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.pic)}</div></div>
-                            <div><div class="flight-info-label">PIC Supv</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.picSupv)}</div></div>
-                            <div><div class="flight-info-label">CO-PILOT</div><div class="flight-info-value" style="color:#a78bfa;">${toDisplay(f.coPilot)}</div></div>
-                            <div><div class="flight-info-label">TR</div><div class="flight-info-value" style="color:#fb923c;">${toDisplay(f.tr)}</div></div>
-                            <div><div class="flight-info-label">NIGHT</div><div class="flight-info-value" style="color:#8b5cf6;">${toDisplay(f.night)}</div></div>
-                            <div><div class="flight-info-label">INST</div><div class="flight-info-value" style="color:#fbbf24;">${toDisplay(f.instTime)}</div></div>
-                            <div><div class="flight-info-label">TO</div><div class="flight-info-value" style="color:#ec4899;">${f.toCount||0}</div></div>
-                            <div><div class="flight-info-label">LD</div><div class="flight-info-value" style="color:#06b6d4;">${f.ldCount||0}</div></div>
-                        </div>
-                        ${details ? `
-                            <div class="flight-details">
-                                ${f.remark ? `<div class="detail-item"><strong>💬 비고:</strong> ${f.remark}</div>` : ''}
-                                ${f.wx ? `<div class="detail-item"><strong>🌤️ 기상:</strong> ${f.wx}</div>` : ''}
-                                ${f.landingCmt ? `<div class="detail-item"><strong>🛬 착륙:</strong> ${f.landingCmt}</div>` : ''}
-                                ${f.clearance ? `<div class="detail-item"><strong>📡 Clearance:</strong> ${f.clearance}</div>` : ''}
-                                ${f.tip ? `<div class="detail-item"><strong>📋 TIP:</strong> ${f.tip}</div>` : ''}
-                            </div>
-                        ` : ''}
+            document.getElementById('list').innerHTML = list.slice().reverse().map(f => `
+                <div class="flight-row">
+                    <div class="action-btns">
+                        <button class="action-btn delete" onclick="window.deleteFlightHandler('${f.id}')">🗑️</button>
                     </div>
-                `;
-            }).join('');
+                    <div class="flight-info">
+                        <div><div class="flight-info-label">날짜</div><div class="flight-info-value">${f.date}</div></div>
+                        <div><div class="flight-info-label">항공기</div><div class="flight-info-value">${f.aircraft}</div></div>
+                        <div><div class="flight-info-label">구간</div><div class="flight-info-value">${f.from}→${f.to}</div></div>
+                        <div><div class="flight-info-label">BLOCK</div><div class="flight-info-value" style="color:#60a5fa;">${toDisplay(f.blockTime)}</div></div>
+                    </div>
+                </div>
+            `).join('');
+            
             updateStats();
         }
         
         function updateStats() {
-            let block=0, pic=0, picSupv=0, coPilot=0, tr=0, night=0, inst=0, to=0, ld=0;
+            let block=0, pic=0, picSupv=0, night=0, inst=0, to=0, ld=0;
             flights.forEach(f => {
                 block += f.blockTime || 0;
                 pic += f.pic || 0;
                 picSupv += f.picSupv || 0;
-                coPilot += f.coPilot || 0;
-                tr += f.tr || 0;
                 night += f.night || 0;
                 inst += f.instTime || 0;
                 to += f.toCount || 0;
@@ -933,150 +506,113 @@
             document.getElementById('totalInst').textContent = toDisplay(inst + prev.inst);
             document.getElementById('totalTO').textContent = to + prev.to;
             document.getElementById('totalLD').textContent = ld + prev.ld;
-            
-            document.getElementById('prevBlock').textContent = `이전: ${toDisplay(prev.block)}`;
-            document.getElementById('prevPIC').textContent = `이전: ${toDisplay(prev.pic + prev.picSupv)}`;
-            document.getElementById('prevNight').textContent = `이전: ${toDisplay(prev.night)}`;
-            document.getElementById('prevInst').textContent = `이전: ${toDisplay(prev.inst)}`;
-            document.getElementById('prevTO').textContent = `이전: ${prev.to}`;
-            document.getElementById('prevLD').textContent = `이전: ${prev.ld}`;
         }
         
-        function testImportExcel(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // 전역 함수로 노출
+        window.saveFirebaseConfig = function() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const projectId = document.getElementById('projectId').value.trim();
+            const appId = document.getElementById('appId').value.trim();
             
-            console.log('📤 Excel 가져오기:', file.name);
-            
-            // XLSX 라이브러리 체크
-            if (typeof XLSX === 'undefined') {
-                console.error('❌ XLSX 라이브러리 없음!');
-                alert('오류: Excel 라이브러리가 로드되지 않았습니다!\n\n인터넷 연결을 확인하고 페이지를 새로고침하세요.');
+            if (!apiKey || !projectId || !appId) {
+                alert('모든 필드를 입력해주세요!');
                 return;
             }
             
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, { type: 'array', cellDates: false, raw: false });
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    
-                    console.log('✅ Excel 로드 완료');
-                    
-                    const parseTime = (cellRef) => {
-                        const cell = ws[cellRef];
-                        if (!cell || !cell.v) return 0;
-                        if (typeof cell.v === 'number') {
-                            return cell.v * 24;
-                        }
-                        if (cell.w) {
-                            const match = cell.w.match(/(\d+):(\d+)/);
-                            if (match) return parseInt(match[1]) + parseInt(match[2]) / 60;
-                        }
-                        return 0;
-                    };
-                    
-                    prev = {
-                        block: parseTime('K6'),
-                        pic: parseTime('G6'),
-                        picSupv: parseTime('H6'),
-                        coPilot: parseTime('I6'),
-                        tr: parseTime('J6'),
-                        night: parseTime('L6'),
-                        inst: parseTime('M6'),
-                        to: (parseInt(ws['O6']?.v || 0)) + (parseInt(ws['P6']?.v || 0)),
-                        ld: (parseInt(ws['Q6']?.v || 0)) + (parseInt(ws['R6']?.v || 0))
-                    };
-                    
-                    localStorage.setItem('prev_v3', JSON.stringify(prev));
-                    
-                    let imported = 0;
-                    for (let row = 7; row <= 200; row++) {
-                        const cellA = ws[`A${row}`];
-                        const cellB = ws[`B${row}`];
-                        if (!cellA || !cellB) break;
-                        
-                        const dateStr = cellA.w || cellA.v?.toString() || '';
-                        if (dateStr.includes('2023-2025') || dateStr.includes('Total')) break;
-                        
-                        flights.push({
-                            id: Date.now() + row,
-                            date: dateStr.split('T')[0].split(' ')[0],
-                            aircraft: ws[`B${row}`]?.w || ws[`B${row}`]?.v || '',
-                            fltNo: ws[`D${row}`]?.w || ws[`D${row}`]?.v || '',
-                            from: ws[`E${row}`]?.w || ws[`E${row}`]?.v || '',
-                            to: ws[`F${row}`]?.w || ws[`F${row}`]?.v || '',
-                            rampOut: '',
-                            takeoff: '',
-                            landing: '',
-                            rampIn: '',
-                            blockTime: parseTime(`K${row}`),
-                            instTime: parseTime(`M${row}`),
-                            pic: parseTime(`G${row}`),
-                            picSupv: parseTime(`H${row}`),
-                            coPilot: parseTime(`I${row}`),
-                            tr: parseTime(`J${row}`),
-                            night: parseTime(`L${row}`),
-                            toCount: (parseInt(ws[`O${row}`]?.v || 0)) + (parseInt(ws[`P${row}`]?.v || 0)),
-                            ldCount: (parseInt(ws[`Q${row}`]?.v || 0)) + (parseInt(ws[`R${row}`]?.v || 0)),
-                            remark: ws[`S${row}`]?.w || ws[`S${row}`]?.v || '',
-                            wx: ws[`AN${row}`]?.w || ws[`AN${row}`]?.v || '',
-                            landingCmt: ws[`AO${row}`]?.w || ws[`AO${row}`]?.v || '',
-                            clearance: ws[`AP${row}`]?.w || ws[`AP${row}`]?.v || '',
-                            tip: ws[`AQ${row}`]?.w || ws[`AQ${row}`]?.v || ''
-                        });
-                        imported++;
-                    }
-                    
-                    console.log('✅ 가져오기 완료:', imported, '개');
-                    save();
-                    alert(`✅ ${imported}개 비행 기록 가져오기 완료!`);
-                } catch (err) {
-                    console.error('❌ Excel 가져오기 오류:', err);
-                    alert('Excel 가져오기 오류:\n' + err.message + '\n\nF12 Console에서 상세 정보 확인');
-                }
+            const config = { apiKey, projectId, appId };
+            
+            // LocalStorage에 저장
+            localStorage.setItem('firebaseConfig', JSON.stringify(config));
+            
+            // Firebase 초기화
+            initFirebase(config);
+        };
+        
+        window.addFlight = async function() {
+            const testFlight = {
+                id: `flight_${Date.now()}`,
+                date: new Date().toISOString().split('T')[0],
+                aircraft: 'B738',
+                from: 'RKSI',
+                to: 'RJAA',
+                blockTime: 4.5,
+                pic: 0,
+                picSupv: 4.5,
+                coPilot: 0,
+                tr: 0,
+                night: 3.0,
+                instTime: 3.5,
+                toCount: 1,
+                ldCount: 1,
+                remark: 'Test flight'
             };
-            reader.readAsArrayBuffer(file);
-        }
-        
-        function testExportExcel() {
-            console.log('📥 Excel 내보내기');
             
-            if (typeof XLSX === 'undefined') {
-                alert('오류: Excel 라이브러리가 로드되지 않았습니다!');
-                return;
+            await saveFlight(testFlight);
+            alert('✅ 테스트 비행 추가됨!\n\n다른 기기에서 새로고침해보세요.');
+        };
+        
+        window.deleteFlightHandler = async function(id) {
+            if (confirm('삭제하시겠습니까?')) {
+                await deleteFlight(id);
             }
+        };
+        
+        window.testSync = function() {
+            alert('🔄 동기화 테스트\n\n1. 이 기기에서 비행 추가\n2. 다른 기기에서 새로고침\n3. 같은 데이터가 보이면 성공!');
+        };
+        
+        window.resetAll = async function() {
+            if (!confirm('⚠️ 모든 데이터를 삭제하시겠습니까?')) return;
+            if (!confirm('정말 확실합니까?')) return;
             
             try {
-                const wb = XLSX.utils.book_new();
-                const data = [
-                    ['Date', 'Aircraft', 'FLT_NO', 'From', 'To', 'BLOCK', 'PIC', 'PIC_Supv', 'CoPilot', 'TR', 'NIGHT', 'INST', 'TO', 'LD', 'Remark']
-                ];
-                flights.forEach(f => {
-                    data.push([
-                        f.date, f.aircraft, f.fltNo || '', f.from, f.to,
-                        toDisplay(f.blockTime), toDisplay(f.pic), toDisplay(f.picSupv),
-                        toDisplay(f.coPilot), toDisplay(f.tr), toDisplay(f.night), toDisplay(f.instTime),
-                        f.toCount, f.ldCount, f.remark
-                    ]);
+                setSyncStatus('connecting', '🔄 삭제 중...');
+                
+                const flightsRef = collection(db, 'users', userId, 'flights');
+                const snapshot = await getDocs(flightsRef);
+                
+                const deletePromises = [];
+                snapshot.forEach(doc => {
+                    deletePromises.push(deleteDoc(doc.ref));
                 });
-                const ws = XLSX.utils.aoa_to_sheet(data);
-                XLSX.utils.book_append_sheet(wb, ws, 'Log');
-                const filename = `LOG_${new Date().toISOString().split('T')[0]}.xlsx`;
-                XLSX.writeFile(wb, filename);
-                console.log('✅ 내보내기 완료:', filename);
+                
+                await Promise.all(deletePromises);
+                
+                flights = [];
+                render(flights);
+                
+                setSyncStatus('connected', '☁️ 클라우드 연결됨');
+                alert('✅ 전체 리셋 완료!');
+                
+            } catch (error) {
+                console.error('❌ 리셋 실패:', error);
+                alert('리셋 실패: ' + error.message);
+            }
+        };
+        
+        window.showFirebaseGuide = function() {
+            window.open('https://console.firebase.google.com', '_blank');
+            alert('📖 Firebase 설정 방법:\n\n1. Firebase Console에서 새 프로젝트 생성\n2. Firestore Database 활성화 (테스트 모드)\n3. 웹 앱 추가\n4. API Key, Project ID, App ID 복사\n5. 여기에 붙여넣기!');
+        };
+        
+        // 저장된 설정 확인
+        const savedConfig = localStorage.getItem('firebaseConfig');
+        if (savedConfig) {
+            try {
+                const config = JSON.parse(savedConfig);
+                console.log('저장된 Firebase 설정 발견');
+                
+                // 자동으로 입력
+                document.getElementById('apiKey').value = config.apiKey;
+                document.getElementById('projectId').value = config.projectId;
+                document.getElementById('appId').value = config.appId;
+                
+                // 자동 초기화
+                initFirebase(config);
             } catch (e) {
-                console.error('❌ 내보내기 실패:', e);
-                alert('내보내기 오류: ' + e.message);
+                console.error('설정 로드 실패:', e);
             }
         }
-        
-        render(flights);
-        updateFilterOptions();
-        
-        console.log('=== 앱 초기화 완료 ===');
-        console.log('비행 기록:', flights.length, '개');
     </script>
 </body>
 </html>
