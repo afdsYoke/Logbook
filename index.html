@@ -275,16 +275,6 @@
         .time-input { flex: 1; text-align: center; }
         .time-separator { font-size: 18px; font-weight: 700; color: #94a3b8; }
         
-        .calc-display {
-            background: rgba(16, 185, 129, 0.1);
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border-left: 3px solid #10b981;
-        }
-        .calc-label { font-size: 11px; color: #6ee7b7; margin-bottom: 5px; }
-        .calc-value { font-size: 16px; color: #34d399; font-weight: 700; font-family: 'Courier New', monospace; }
-        
         input[type="file"] { display: none; }
         .empty-state { text-align: center; padding: 50px 20px; color: #64748b; }
         
@@ -304,6 +294,13 @@
                 PC와 폰에서 데이터를 동기화하려면 Firebase 설정이 필요합니다.<br>
                 <strong>무료</strong>이며, 설정은 한 번만 하면 됩니다!
             </p>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 3px solid #10b981;">
+                <div style="color: #34d399; font-weight: 600; margin-bottom: 5px;">✅ 자동 동기화 설정됨</div>
+                <div style="font-size: 13px; color: #cbd5e1;">
+                    PC와 아이폰에서 <strong>같은 Firebase 설정</strong>을 입력하면<br>
+                    모든 기기에서 자동으로 데이터가 동기화됩니다!
+                </div>
+            </div>
             
             <div class="setup-form">
                 <input type="text" class="setup-input" id="apiKey" placeholder="API Key (예: AIzaSyABC123...)" />
@@ -312,6 +309,10 @@
                 
                 <button class="btn-primary" onclick="saveFirebaseConfig()" style="margin-top: 10px;">
                     ✅ 저장하고 시작하기
+                </button>
+                
+                <button class="btn-danger" onclick="clearFirebaseConfig()" style="margin-top: 5px;">
+                    🗑️ 저장된 설정 삭제
                 </button>
             </div>
             
@@ -324,6 +325,9 @@
             <div class="sync-status connecting" id="syncStatus">
                 🔄 Firebase 설정 대기 중...
             </div>
+            <div id="projectInfo" style="font-size: 12px; color: #94a3b8; margin-top: 8px; display: none;">
+                📦 프로젝트: <span id="currentProject"></span>
+            </div>
         </div>
 
         <div id="app">
@@ -331,42 +335,35 @@
                 <div class="main-stat-card" style="border-left-color: #3b82f6;">
                     <h3>Total Block Time</h3>
                     <div class="value" style="color: #3b82f6;" id="totalBlock">0:00</div>
-                    <div class="subtext" id="prevBlock">이전: 0:00</div>
                 </div>
                 <div class="main-stat-card" style="border-left-color: #10b981;">
                     <h3>Total PIC</h3>
                     <div class="value" style="color: #10b981;" id="totalPIC">0:00</div>
-                    <div class="subtext" id="prevPIC">이전: 0:00</div>
                 </div>
                 <div class="main-stat-card" style="border-left-color: #8b5cf6;">
                     <h3>Night Time</h3>
                     <div class="value" style="color: #8b5cf6;" id="totalNight">0:00</div>
-                    <div class="subtext" id="prevNight">이전: 0:00</div>
                 </div>
                 <div class="main-stat-card" style="border-left-color: #f59e0b;">
                     <h3>Instrument</h3>
                     <div class="value" style="color: #f59e0b;" id="totalInst">0:00</div>
-                    <div class="subtext" id="prevInst">이전: 0:00</div>
                 </div>
                 <div class="main-stat-card" style="border-left-color: #ec4899;">
                     <h3>Takeoffs</h3>
                     <div class="value" style="color: #ec4899;" id="totalTO">0</div>
-                    <div class="subtext" id="prevTO">이전: 0</div>
                 </div>
                 <div class="main-stat-card" style="border-left-color: #06b6d4;">
                     <h3>Landings</h3>
                     <div class="value" style="color: #06b6d4;" id="totalLD">0</div>
-                    <div class="subtext" id="prevLD">이전: 0</div>
                 </div>
             </div>
 
             <div class="buttons">
                 <button class="btn-primary" onclick="showAddModal()">➕ 비행 추가</button>
-                <label class="btn-secondary" style="display: inline-block; cursor: pointer;">
-                    📤 엑셀 가져오기
-                    <input type="file" accept=".xlsx,.xls" onchange="importExcel(event)">
-                </label>
+                <button class="btn-secondary" onclick="document.getElementById('excelFile').click()">📤 엑셀 가져오기</button>
+                <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="importExcel(event)" />
                 <button class="btn-warning" onclick="exportExcel()">📥 엑셀 내보내기</button>
+                <button class="btn-secondary" onclick="showFirebaseSettings()">⚙️ Firebase 설정</button>
                 <button class="btn-danger" onclick="resetAll()">🔄 전체 리셋</button>
             </div>
 
@@ -456,49 +453,33 @@
                 </div>
 
                 <div class="form-section">
-                    <h3>⏱️ 시간 입력 (HH:MM)</h3>
-                    <div class="form-row-4">
+                    <h3>👨‍✈️ 비행 시간 (시:분)</h3>
+                    <div class="form-row-3">
                         <div class="form-group">
-                            <label>RAMP OUT</label>
+                            <label>BLOCK</label>
                             <div class="time-input-group">
-                                <input type="number" class="time-input" id="rampOutH" min="0" max="23" placeholder="HH">
+                                <input type="number" class="time-input" id="blockH" min="0" placeholder="시">
                                 <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="rampOutM" min="0" max="59" placeholder="MM">
+                                <input type="number" class="time-input" id="blockM" min="0" max="59" placeholder="분">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>TAKEOFF</label>
+                            <label>NIGHT</label>
                             <div class="time-input-group">
-                                <input type="number" class="time-input" id="takeoffH" min="0" max="23" placeholder="HH">
+                                <input type="number" class="time-input" id="nightH" min="0" placeholder="시">
                                 <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="takeoffM" min="0" max="59" placeholder="MM">
+                                <input type="number" class="time-input" id="nightM" min="0" max="59" placeholder="분">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>LANDING</label>
+                            <label>INST</label>
                             <div class="time-input-group">
-                                <input type="number" class="time-input" id="landingH" min="0" max="23" placeholder="HH">
+                                <input type="number" class="time-input" id="instH" min="0" placeholder="시">
                                 <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="landingM" min="0" max="59" placeholder="MM">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>RAMP IN</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="rampInH" min="0" max="23" placeholder="HH">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="rampInM" min="0" max="59" placeholder="MM">
+                                <input type="number" class="time-input" id="instM" min="0" max="59" placeholder="분">
                             </div>
                         </div>
                     </div>
-                    <div class="calc-display">
-                        <div class="calc-label">자동 계산:</div>
-                        <div class="calc-value">BLOCK TIME: <span id="calcBlock">--</span> | INST TIME: <span id="calcInst">--</span></div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h3>👨‍✈️ 역할별 시간 (60진법: 시:분)</h3>
                     <div class="form-row-4">
                         <div class="form-group">
                             <label>PIC</label>
@@ -509,7 +490,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>PIC under SUPVSN</label>
+                            <label>PIC_Supv</label>
                             <div class="time-input-group">
                                 <input type="number" class="time-input" id="picSupvH" min="0" placeholder="시">
                                 <span class="time-separator">:</span>
@@ -517,7 +498,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>CO-PILOT</label>
+                            <label>CoPilot</label>
                             <div class="time-input-group">
                                 <input type="number" class="time-input" id="coPilotH" min="0" placeholder="시">
                                 <span class="time-separator">:</span>
@@ -530,16 +511,6 @@
                                 <input type="number" class="time-input" id="trH" min="0" placeholder="시">
                                 <span class="time-separator">:</span>
                                 <input type="number" class="time-input" id="trM" min="0" max="59" placeholder="분">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>NIGHT</label>
-                            <div class="time-input-group">
-                                <input type="number" class="time-input" id="nightH" min="0" placeholder="시">
-                                <span class="time-separator">:</span>
-                                <input type="number" class="time-input" id="nightM" min="0" max="59" placeholder="분">
                             </div>
                         </div>
                     </div>
@@ -562,11 +533,11 @@
                 <div class="form-section">
                     <h3>📝 상세 정보</h3>
                     <div class="form-group">
-                        <label>비고</label>
+                        <label>비고 (Remark)</label>
                         <input type="text" id="remark" placeholder="C 김철수">
                     </div>
                     <div class="form-group">
-                        <label>기상 (Wx Dest)</label>
+                        <label>기상 (Wx)</label>
                         <input type="text" id="wx" placeholder="CAVOK">
                     </div>
                     <div class="form-group">
@@ -594,7 +565,7 @@
     <!-- Firebase SDK (CDN) -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
         
         console.log('🔥 Firebase SDK 로드 완료');
@@ -605,7 +576,6 @@
         let auth = null;
         let userId = null;
         let flights = [];
-        let prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
         let unsubscribe = null;
         
         // 유틸리티 함수
@@ -617,30 +587,18 @@
             return `${h}:${pad(m)}`;
         }
         function toDec(h, m) { return (h || 0) + (m || 0) / 60; }
-        function timeStr(h, m) {
-            if (!h && !m) return '';
-            return `${pad(h||0)}:${pad(m||0)}`;
-        }
         
-        function calcTimes(rampOut, takeoff, landing, rampIn) {
-            if (!rampOut || !rampIn) return { block: 0, inst: 0 };
-            const toMin = (t) => {
-                if (!t) return 0;
-                const [h, m] = t.split(':').map(Number);
-                return h * 60 + m;
-            };
-            const rampOutMin = toMin(rampOut);
-            const rampInMin = toMin(rampIn);
-            let blockMin = rampInMin - rampOutMin;
-            if (blockMin < 0) blockMin += 1440;
-            let instMin = 0;
-            if (takeoff && landing) {
-                const toMin_ = toMin(takeoff);
-                const ldMin = toMin(landing);
-                instMin = ldMin - toMin_;
-                if (instMin < 0) instMin += 1440;
+        // 시간 문자열 파싱 ("4:34" → 4.567)
+        function parseTimeString(timeStr) {
+            if (!timeStr) return 0;
+            const str = timeStr.toString().trim();
+            const match = str.match(/(\d+):(\d+)/);
+            if (match) {
+                const h = parseInt(match[1]);
+                const m = parseInt(match[2]);
+                return h + m / 60;
             }
-            return { block: blockMin / 60, inst: instMin / 60 };
+            return 0;
         }
         
         function setSyncStatus(status, text) {
@@ -666,10 +624,15 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                const userCredential = await signInAnonymously(auth);
-                userId = userCredential.user.uid;
+                // ✅ 고정 User ID 사용 (모든 기기에서 동일)
+                // 이렇게 하면 PC, 아이폰, 모든 기기에서 같은 데이터 공유!
+                userId = 'pilot-logbook-user';
+                
+                // 익명 인증은 Firebase 규칙 통과용
+                await signInAnonymously(auth);
                 
                 console.log('✅ 인증 완료. User ID:', userId);
+                console.log('💡 모든 기기에서 같은 User ID를 사용합니다.');
                 
                 await loadData();
                 setupRealtimeSync();
@@ -677,6 +640,10 @@
                 document.getElementById('setupPanel').style.display = 'none';
                 document.getElementById('app').classList.add('ready');
                 setSyncStatus('connected', '☁️ 클라우드 연결됨');
+                
+                // 프로젝트 정보 표시
+                document.getElementById('projectInfo').style.display = 'block';
+                document.getElementById('currentProject').textContent = config.projectId;
                 
                 console.log('✅ Firebase 초기화 완료!');
                 
@@ -701,14 +668,6 @@
                 });
                 
                 console.log(`✅ ${flights.length}개 비행 기록 로드됨`);
-                
-                const prevRef = doc(db, 'users', userId, 'settings', 'previous');
-                const prevDoc = await getDoc(prevRef);
-                
-                if (prevDoc.exists()) {
-                    prev = prevDoc.data();
-                    console.log('✅ 이전 누적 데이터 로드됨');
-                }
                 
                 applyFilters();
                 updateFilterOptions();
@@ -776,17 +735,6 @@
             }
         }
         
-        // 이전 데이터 저장
-        async function savePreviousToFirebase() {
-            try {
-                const prevRef = doc(db, 'users', userId, 'settings', 'previous');
-                await setDoc(prevRef, prev);
-                console.log('✅ 이전 누적 데이터 저장 완료');
-            } catch (error) {
-                console.error('❌ 이전 데이터 저장 실패:', error);
-            }
-        }
-        
         // 렌더링
         function render(list) {
             document.getElementById('count').textContent = list.length;
@@ -813,9 +761,8 @@
                             <div><div class="flight-info-label">구간</div><div class="flight-info-value">${f.from}→${f.to}</div></div>
                             <div><div class="flight-info-label">BLOCK</div><div class="flight-info-value" style="color:#60a5fa;">${toDisplay(f.blockTime)}</div></div>
                             <div><div class="flight-info-label">PIC</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.pic)}</div></div>
-                            <div><div class="flight-info-label">PIC Supv</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.picSupv)}</div></div>
-                            <div><div class="flight-info-label">CO-PILOT</div><div class="flight-info-value" style="color:#a78bfa;">${toDisplay(f.coPilot)}</div></div>
-                            <div><div class="flight-info-label">TR</div><div class="flight-info-value" style="color:#fb923c;">${toDisplay(f.tr)}</div></div>
+                            <div><div class="flight-info-label">PIC_Supv</div><div class="flight-info-value" style="color:#34d399;">${toDisplay(f.picSupv)}</div></div>
+                            <div><div class="flight-info-label">CoPilot</div><div class="flight-info-value" style="color:#a78bfa;">${toDisplay(f.coPilot)}</div></div>
                             <div><div class="flight-info-label">NIGHT</div><div class="flight-info-value" style="color:#8b5cf6;">${toDisplay(f.night)}</div></div>
                             <div><div class="flight-info-label">INST</div><div class="flight-info-value" style="color:#fbbf24;">${toDisplay(f.instTime)}</div></div>
                             <div><div class="flight-info-label">TO</div><div class="flight-info-value" style="color:#ec4899;">${f.toCount||0}</div></div>
@@ -838,30 +785,25 @@
         }
         
         function updateStats() {
-            let block=0, pic=0, picSupv=0, night=0, inst=0, to=0, ld=0;
+            let block=0, pic=0, picSupv=0, coPilot=0, tr=0, night=0, inst=0, to=0, ld=0;
             flights.forEach(f => {
                 block += f.blockTime || 0;
                 pic += f.pic || 0;
                 picSupv += f.picSupv || 0;
+                coPilot += f.coPilot || 0;
+                tr += f.tr || 0;
                 night += f.night || 0;
                 inst += f.instTime || 0;
                 to += f.toCount || 0;
                 ld += f.ldCount || 0;
             });
             
-            document.getElementById('totalBlock').textContent = toDisplay(block + prev.block);
-            document.getElementById('totalPIC').textContent = toDisplay(pic + picSupv + prev.pic + prev.picSupv);
-            document.getElementById('totalNight').textContent = toDisplay(night + prev.night);
-            document.getElementById('totalInst').textContent = toDisplay(inst + prev.inst);
-            document.getElementById('totalTO').textContent = to + prev.to;
-            document.getElementById('totalLD').textContent = ld + prev.ld;
-            
-            document.getElementById('prevBlock').textContent = `이전: ${toDisplay(prev.block)}`;
-            document.getElementById('prevPIC').textContent = `이전: ${toDisplay(prev.pic + prev.picSupv)}`;
-            document.getElementById('prevNight').textContent = `이전: ${toDisplay(prev.night)}`;
-            document.getElementById('prevInst').textContent = `이전: ${toDisplay(prev.inst)}`;
-            document.getElementById('prevTO').textContent = `이전: ${prev.to}`;
-            document.getElementById('prevLD').textContent = `이전: ${prev.ld}`;
+            document.getElementById('totalBlock').textContent = toDisplay(block);
+            document.getElementById('totalPIC').textContent = toDisplay(pic + picSupv);
+            document.getElementById('totalNight').textContent = toDisplay(night);
+            document.getElementById('totalInst').textContent = toDisplay(inst);
+            document.getElementById('totalTO').textContent = to;
+            document.getElementById('totalLD').textContent = ld;
         }
         
         // 필터
@@ -920,20 +862,44 @@
             initFirebase(config);
         };
         
+        window.showFirebaseSettings = function() {
+            if (confirm('Firebase 설정을 변경하시겠습니까?\n\n⚠️ 주의: 다른 설정을 입력하면 다른 데이터베이스에 접속됩니다!')) {
+                // 현재 설정 표시
+                const savedConfig = localStorage.getItem('firebaseConfig');
+                if (savedConfig) {
+                    try {
+                        const config = JSON.parse(savedConfig);
+                        document.getElementById('apiKey').value = config.apiKey;
+                        document.getElementById('projectId').value = config.projectId;
+                        document.getElementById('appId').value = config.appId;
+                    } catch (e) {
+                        console.error('설정 로드 실패:', e);
+                    }
+                }
+                
+                // 설정 패널 표시, 앱 화면 숨김
+                document.getElementById('setupPanel').style.display = 'block';
+                document.getElementById('app').style.display = 'none';
+                document.getElementById('projectInfo').style.display = 'none';
+                setSyncStatus('connecting', '🔄 설정 변경 중...');
+                
+                // 스크롤 최상단으로
+                window.scrollTo(0, 0);
+            }
+        };
+        
+        window.clearFirebaseConfig = function() {
+            if (confirm('⚠️ Firebase 설정을 완전히 삭제하시겠습니까?\n\n삭제 후 페이지를 새로고침하면 설정 화면이 나타납니다.')) {
+                localStorage.removeItem('firebaseConfig');
+                alert('✅ Firebase 설정이 삭제되었습니다!\n\n페이지를 새로고침(F5)하세요.');
+            }
+        };
+        
         window.showAddModal = function() {
             document.getElementById('modalTitle').textContent = '✈️ 새 비행 기록';
             document.getElementById('editId').value = '';
             document.getElementById('modal').classList.add('show');
             document.getElementById('date').value = new Date().toISOString().split('T')[0];
-            
-            // 시간 계산 이벤트 리스너 추가
-            ['rampOutH', 'rampOutM', 'takeoffH', 'takeoffM', 'landingH', 'landingM', 'rampInH', 'rampInM'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.removeEventListener('input', updateCalc);
-                    el.addEventListener('input', updateCalc);
-                }
-            });
         };
         
         window.showEditModal = function(id) {
@@ -948,39 +914,21 @@
             document.getElementById('from').value = flight.from;
             document.getElementById('to').value = flight.to;
             
-            if (flight.rampOut) {
-                const [h, m] = flight.rampOut.split(':');
-                document.getElementById('rampOutH').value = h;
-                document.getElementById('rampOutM').value = m;
-            }
-            if (flight.takeoff) {
-                const [h, m] = flight.takeoff.split(':');
-                document.getElementById('takeoffH').value = h;
-                document.getElementById('takeoffM').value = m;
-            }
-            if (flight.landing) {
-                const [h, m] = flight.landing.split(':');
-                document.getElementById('landingH').value = h;
-                document.getElementById('landingM').value = m;
-            }
-            if (flight.rampIn) {
-                const [h, m] = flight.rampIn.split(':');
-                document.getElementById('rampInH').value = h;
-                document.getElementById('rampInM').value = m;
-            }
-            
-            const fillTime = (id, val) => {
+            const fillTime = (idPrefix, val) => {
                 if (!val) return;
                 const h = Math.floor(val);
                 const m = Math.round((val - h) * 60);
-                document.getElementById(id + 'H').value = h;
-                document.getElementById(id + 'M').value = m;
+                document.getElementById(idPrefix + 'H').value = h;
+                document.getElementById(idPrefix + 'M').value = m;
             };
+            
+            fillTime('block', flight.blockTime);
             fillTime('pic', flight.pic);
             fillTime('picSupv', flight.picSupv);
             fillTime('coPilot', flight.coPilot);
             fillTime('tr', flight.tr);
             fillTime('night', flight.night);
+            fillTime('inst', flight.instTime);
             
             document.getElementById('toCount').value = flight.toCount || '';
             document.getElementById('ldCount').value = flight.ldCount || '';
@@ -990,27 +938,7 @@
             document.getElementById('clearance').value = flight.clearance || '';
             document.getElementById('tip').value = flight.tip || '';
             
-            window.updateCalc();
             document.getElementById('modal').classList.add('show');
-            
-            // 시간 계산 이벤트 리스너 추가
-            ['rampOutH', 'rampOutM', 'takeoffH', 'takeoffM', 'landingH', 'landingM', 'rampInH', 'rampInM'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.removeEventListener('input', updateCalc);
-                    el.addEventListener('input', updateCalc);
-                }
-            });
-        };
-        
-        window.updateCalc = function() {
-            const rampOut = timeStr(document.getElementById('rampOutH').value, document.getElementById('rampOutM').value);
-            const takeoff = timeStr(document.getElementById('takeoffH').value, document.getElementById('takeoffM').value);
-            const landing = timeStr(document.getElementById('landingH').value, document.getElementById('landingM').value);
-            const rampIn = timeStr(document.getElementById('rampInH').value, document.getElementById('rampInM').value);
-            const times = calcTimes(rampOut, takeoff, landing, rampIn);
-            document.getElementById('calcBlock').textContent = times.block > 0 ? toDisplay(times.block) : '--';
-            document.getElementById('calcInst').textContent = times.inst > 0 ? toDisplay(times.inst) : '--';
         };
         
         window.closeModal = function() {
@@ -1022,29 +950,19 @@
             e.preventDefault();
             
             try {
-                const rampOut = timeStr(document.getElementById('rampOutH').value, document.getElementById('rampOutM').value);
-                const takeoff = timeStr(document.getElementById('takeoffH').value, document.getElementById('takeoffM').value);
-                const landing = timeStr(document.getElementById('landingH').value, document.getElementById('landingM').value);
-                const rampIn = timeStr(document.getElementById('rampInH').value, document.getElementById('rampInM').value);
-                const times = calcTimes(rampOut, takeoff, landing, rampIn);
-                
                 const data = {
                     date: document.getElementById('date').value,
                     aircraft: document.getElementById('aircraft').value,
                     fltNo: document.getElementById('fltNo').value,
                     from: document.getElementById('from').value.toUpperCase(),
                     to: document.getElementById('to').value.toUpperCase(),
-                    rampOut: rampOut,
-                    takeoff: takeoff,
-                    landing: landing,
-                    rampIn: rampIn,
-                    blockTime: times.block,
-                    instTime: times.inst,
+                    blockTime: toDec(+document.getElementById('blockH').value, +document.getElementById('blockM').value),
                     pic: toDec(+document.getElementById('picH').value, +document.getElementById('picM').value),
                     picSupv: toDec(+document.getElementById('picSupvH').value, +document.getElementById('picSupvM').value),
                     coPilot: toDec(+document.getElementById('coPilotH').value, +document.getElementById('coPilotM').value),
                     tr: toDec(+document.getElementById('trH').value, +document.getElementById('trM').value),
                     night: toDec(+document.getElementById('nightH').value, +document.getElementById('nightM').value),
+                    instTime: toDec(+document.getElementById('instH').value, +document.getElementById('instM').value),
                     toCount: +document.getElementById('toCount').value || 0,
                     ldCount: +document.getElementById('ldCount').value || 0,
                     remark: document.getElementById('remark').value,
@@ -1055,11 +973,7 @@
                 };
                 
                 const editId = document.getElementById('editId').value;
-                if (editId) {
-                    data.id = editId;
-                } else {
-                    data.id = `flight_${Date.now()}`;
-                }
+                data.id = editId || `flight_${Date.now()}`;
                 
                 await saveFlightToFirebase(data);
                 window.closeModal();
@@ -1104,83 +1018,82 @@
             }
             
             console.log('📤 Excel 가져오기:', file.name);
+            console.log('=== 새 Excel 구조 (LOG_2026-02-26.xlsx) ===');
+            console.log('A: Date, B: Aircraft, C: FLT_NO, D: From, E: To');
+            console.log('F: BLOCK, G: PIC, H: PIC_Supv, I: CoPilot, J: TR');
+            console.log('K: NIGHT, L: INST, M: TO, N: LD');
+            console.log('O: Remark, P: Wx, Q: Landing, R: Clearance, S: TIP');
             
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, { type: 'array', cellDates: false, raw: false });
+                    const wb = XLSX.read(data, { type: 'array' });
                     const ws = wb.Sheets[wb.SheetNames[0]];
                     
-                    const parseTime = (cellRef) => {
-                        const cell = ws[cellRef];
-                        if (!cell || !cell.v) return 0;
-                        if (typeof cell.v === 'number') return cell.v * 24;
-                        if (cell.w) {
-                            const match = cell.w.match(/(\d+):(\d+)/);
-                            if (match) return parseInt(match[1]) + parseInt(match[2]) / 60;
-                        }
-                        return 0;
-                    };
+                    console.log('✅ Excel 로드 완료');
                     
-                    // Row 6 = 이전 누적
-                    prev = {
-                        block: parseTime('K6'),
-                        pic: parseTime('G6'),
-                        picSupv: parseTime('H6'),
-                        coPilot: parseTime('I6'),
-                        tr: parseTime('J6'),
-                        night: parseTime('L6'),
-                        inst: parseTime('M6'),
-                        to: (parseInt(ws['O6']?.v || 0)) + (parseInt(ws['P6']?.v || 0)),
-                        ld: (parseInt(ws['Q6']?.v || 0)) + (parseInt(ws['R6']?.v || 0))
-                    };
-                    
-                    await savePreviousToFirebase();
-                    
-                    // Row 7부터 비행 기록
+                    // Row 2부터 시작 (Row 1은 헤더)
                     let imported = 0;
-                    for (let row = 7; row <= 200; row++) {
+                    for (let row = 2; row <= 200; row++) {
                         const cellA = ws[`A${row}`];
                         const cellB = ws[`B${row}`];
+                        
                         if (!cellA || !cellB) break;
                         
-                        const dateStr = cellA.w || cellA.v?.toString() || '';
-                        if (dateStr.includes('2023-2025') || dateStr.includes('Total')) break;
+                        const dateStr = (cellA.w || cellA.v || '').toString();
+                        if (dateStr.includes('Total') || !dateStr) break;
+                        
+                        // 날짜 파싱 (1/4/26 → 2026-01-04)
+                        let formattedDate = dateStr;
+                        const dateMatch = dateStr.match(/(\d+)\/(\d+)\/(\d+)/);
+                        if (dateMatch) {
+                            const month = dateMatch[1].padStart(2, '0');
+                            const day = dateMatch[2].padStart(2, '0');
+                            const year = '20' + dateMatch[3];
+                            formattedDate = `${year}-${month}-${day}`;
+                        }
                         
                         const flightData = {
                             id: `flight_${Date.now()}_${row}`,
-                            date: dateStr.split('T')[0].split(' ')[0],
-                            aircraft: ws[`B${row}`]?.w || ws[`B${row}`]?.v || '',
-                            fltNo: ws[`D${row}`]?.w || ws[`D${row}`]?.v || '',
-                            from: ws[`E${row}`]?.w || ws[`E${row}`]?.v || '',
-                            to: ws[`F${row}`]?.w || ws[`F${row}`]?.v || '',
-                            rampOut: '',
-                            takeoff: '',
-                            landing: '',
-                            rampIn: '',
-                            blockTime: parseTime(`K${row}`),
-                            instTime: parseTime(`M${row}`),
-                            pic: parseTime(`G${row}`),
-                            picSupv: parseTime(`H${row}`),
-                            coPilot: parseTime(`I${row}`),
-                            tr: parseTime(`J${row}`),
-                            night: parseTime(`L${row}`),
-                            toCount: (parseInt(ws[`O${row}`]?.v || 0)) + (parseInt(ws[`P${row}`]?.v || 0)),
-                            ldCount: (parseInt(ws[`Q${row}`]?.v || 0)) + (parseInt(ws[`R${row}`]?.v || 0)),
-                            remark: ws[`S${row}`]?.w || ws[`S${row}`]?.v || '',
-                            wx: ws[`AN${row}`]?.w || ws[`AN${row}`]?.v || '',
-                            landingCmt: ws[`AO${row}`]?.w || ws[`AO${row}`]?.v || '',
-                            clearance: ws[`AP${row}`]?.w || ws[`AP${row}`]?.v || '',
-                            tip: ws[`AQ${row}`]?.w || ws[`AQ${row}`]?.v || ''
+                            date: formattedDate,
+                            aircraft: (ws[`B${row}`]?.w || ws[`B${row}`]?.v || '').toString(),
+                            fltNo: (ws[`C${row}`]?.w || ws[`C${row}`]?.v || '').toString(),
+                            from: (ws[`D${row}`]?.w || ws[`D${row}`]?.v || '').toString(),
+                            to: (ws[`E${row}`]?.w || ws[`E${row}`]?.v || '').toString(),
+                            blockTime: parseTimeString(ws[`F${row}`]?.w || ws[`F${row}`]?.v),
+                            pic: parseTimeString(ws[`G${row}`]?.w || ws[`G${row}`]?.v),
+                            picSupv: parseTimeString(ws[`H${row}`]?.w || ws[`H${row}`]?.v),
+                            coPilot: parseTimeString(ws[`I${row}`]?.w || ws[`I${row}`]?.v),
+                            tr: parseTimeString(ws[`J${row}`]?.w || ws[`J${row}`]?.v),
+                            night: parseTimeString(ws[`K${row}`]?.w || ws[`K${row}`]?.v),
+                            instTime: parseTimeString(ws[`L${row}`]?.w || ws[`L${row}`]?.v),
+                            toCount: parseInt(ws[`M${row}`]?.v || 0),
+                            ldCount: parseInt(ws[`N${row}`]?.v || 0),
+                            remark: (ws[`O${row}`]?.w || ws[`O${row}`]?.v || '').toString(),
+                            wx: (ws[`P${row}`]?.w || ws[`P${row}`]?.v || '').toString(),
+                            landingCmt: (ws[`Q${row}`]?.w || ws[`Q${row}`]?.v || '').toString(),
+                            clearance: (ws[`R${row}`]?.w || ws[`R${row}`]?.v || '').toString(),
+                            tip: (ws[`S${row}`]?.w || ws[`S${row}`]?.v || '').toString()
                         };
+                        
+                        if (imported < 3) {
+                            console.log(`Row ${row}:`, flightData);
+                        }
                         
                         await saveFlightToFirebase(flightData);
                         imported++;
                     }
                     
                     console.log(`✅ ${imported}개 가져오기 완료`);
-                    alert(`✅ ${imported}개 비행 기록 가져오기 완료!\n\n다른 기기에서도 확인해보세요!`);
+                    
+                    // 통계 계산
+                    const totalBlock = flights.reduce((sum, f) => sum + (f.blockTime || 0), 0);
+                    const totalPIC = flights.reduce((sum, f) => sum + (f.pic || 0) + (f.picSupv || 0), 0);
+                    const totalNight = flights.reduce((sum, f) => sum + (f.night || 0), 0);
+                    const totalInst = flights.reduce((sum, f) => sum + (f.instTime || 0), 0);
+                    
+                    alert(`✅ ${imported}개 비행 기록 가져오기 완료!\n\n통계:\n- Total Block: ${toDisplay(totalBlock)}\n- Total PIC: ${toDisplay(totalPIC)}\n- Night: ${toDisplay(totalNight)}\n- Inst: ${toDisplay(totalInst)}\n\n다른 기기에서도 확인해보세요!`);
                     
                 } catch (err) {
                     console.error('❌ Excel 가져오기 오류:', err);
@@ -1236,9 +1149,6 @@
                 });
                 
                 await Promise.all(deletePromises);
-                
-                prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
-                await savePreviousToFirebase();
                 
                 flights = [];
                 applyFiltersInternal();
