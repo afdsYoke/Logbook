@@ -564,7 +564,7 @@
 
     <!-- Firebase SDK (CDN) -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { initializeApp, getApps, deleteApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
         
@@ -613,6 +613,24 @@
                 console.log('Firebase 초기화 시작...');
                 setSyncStatus('connecting', '🔄 연결 중...');
                 
+                // 기존 실시간 동기화 중지
+                if (unsubscribe) {
+                    console.log('기존 실시간 동기화 중지 중...');
+                    unsubscribe();
+                    unsubscribe = null;
+                }
+                
+                // 기존 Firebase 앱 정리
+                const existingApps = getApps();
+                if (existingApps.length > 0) {
+                    console.log('기존 Firebase 앱 삭제 중...');
+                    for (const existingApp of existingApps) {
+                        await deleteApp(existingApp);
+                    }
+                    console.log('✅ 기존 앱 삭제 완료');
+                }
+                
+                // 새 Firebase 앱 초기화
                 const app = initializeApp({
                     apiKey: config.apiKey,
                     authDomain: `${config.projectId}.firebaseapp.com`,
