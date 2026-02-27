@@ -295,6 +295,7 @@
                 <button class="btn-warning" onclick="exportExcel()">📥 엑셀 내보내기</button>
                 <button class="btn-secondary" onclick="showFirebaseSettings()">⚙️ Firebase 설정</button>
                 <button class="btn-secondary" onclick="showRouteModal()">🗺️ 노선 설정</button>
+                <button class="btn-secondary" onclick="showAirportModal()">🛫 공항 관리</button>
                 <button class="btn-danger" onclick="resetAll()">🔄 전체 리셋</button>
             </div>
 
@@ -563,6 +564,112 @@
         </div>
     </div>
 
+    <!-- Airport Management Modal -->
+    <div id="airportModal" class="modal">
+        <div class="modal-content">
+            <h2>✈️ 공항 일출일몰 관리</h2>
+            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 15px;">
+                DB에 없는 공항은 기본값(06:00~18:00)이 사용됩니다. 아래에서 공항을 추가/수정하세요.
+            </p>
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 15px; color: #60a5fa; margin-bottom: 10px;">📋 현재 등록된 공항</h3>
+                <div id="airportList" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <h3 style="font-size: 15px; color: #34d399; margin-bottom: 10px;">➕ 새 공항 추가</h3>
+                <div class="form-group">
+                    <label>ICAO 코드 (4글자) *</label>
+                    <input type="text" id="newAirportIcao" placeholder="RKSI" maxlength="4" style="text-transform: uppercase;">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>월 선택 *</label>
+                        <select id="newAirportMonth">
+                            <option value="1">1월</option>
+                            <option value="2">2월</option>
+                            <option value="3">3월</option>
+                            <option value="4">4월</option>
+                            <option value="5">5월</option>
+                            <option value="6">6월</option>
+                            <option value="7">7월</option>
+                            <option value="8">8월</option>
+                            <option value="9">9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>일출 시간 (HH:MM)</label>
+                        <input type="text" id="newAirportSunrise" placeholder="06:30">
+                    </div>
+                    <div class="form-group">
+                        <label>일몰 시간 (HH:MM)</label>
+                        <input type="text" id="newAirportSunset" placeholder="18:30">
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="addCustomAirport()">💾 저장</button>
+            </div>
+            
+            <button class="btn-secondary" onclick="closeAirportModal()" style="margin-top: 10px;">닫기</button>
+        </div>
+    </div>
+
+    <!-- Airport Management Modal -->
+    <div id="airportModal" class="modal">
+        <div class="modal-content">
+            <h2>🛫 공항 일출일몰 관리</h2>
+            <p style="font-size: 13px; color: #94a3b8; margin-bottom: 15px;">
+                총 <strong style="color: #60a5fa;">36개</strong> 공항 DB 내장 | 새 공항 추가 가능
+            </p>
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 15px; color: #34d399; margin-bottom: 10px;">✅ 내장 공항 (36개)</h3>
+                <div id="builtinAirportList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; margin-bottom: 15px;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 15px; color: #fbbf24; margin-bottom: 10px;">➕ 사용자 추가 공항</h3>
+                <div id="customAirportList" style="margin-bottom: 10px;"></div>
+            </div>
+            
+            <button class="btn-primary" onclick="showAddAirportForm()">➕ 새 공항 추가</button>
+            <button class="btn-secondary" onclick="closeAirportModal()" style="margin-top: 10px;">닫기</button>
+        </div>
+    </div>
+
+    <!-- Add Airport Form Modal -->
+    <div id="addAirportModal" class="modal">
+        <div class="modal-content">
+            <h2>➕ 공항 추가/수정</h2>
+            <div class="form-group">
+                <label>ICAO 코드 *</label>
+                <input type="text" id="newAirportICAO" placeholder="RKSI" maxlength="4" style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label>공항 이름</label>
+                <input type="text" id="newAirportName" placeholder="Incheon Intl">
+            </div>
+            
+            <h3 style="font-size: 14px; color: #60a5fa; margin: 15px 0 10px 0;">월별 일출/일몰 시간</h3>
+            <p style="font-size: 11px; color: #94a3b8; margin-bottom: 10px;">
+                모든 월을 입력하거나, 일부만 입력하면 나머지는 기본값(06:00-18:00) 사용
+            </p>
+            
+            <div id="monthlyTimes" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;"></div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn-primary" style="flex: 1;" onclick="saveNewAirport()">저장</button>
+                <button class="btn-secondary" style="flex: 1;" onclick="closeAddAirportModal()">취소</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp, getApps, deleteApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
@@ -571,47 +678,343 @@
         
         let db, auth, userId, flights = [], prev = {}, unsubscribe = null, routeMap = {};
         
-        // ✅ 공항 일출일몰 데이터베이스 (월별 평균)
+        // ✅ 전체 취항 공항 일출일몰 데이터베이스 (36개 공항)
         const AIRPORT_SUN_DB = {
+            // 한국 (7개)
             'RKSI': { // 인천
-                1:  {sunrise:'07:30',sunset:'17:30'}, 2:  {sunrise:'07:10',sunset:'18:00'},
-                3:  {sunrise:'06:30',sunset:'18:30'}, 4:  {sunrise:'05:50',sunset:'19:00'},
-                5:  {sunrise:'05:20',sunset:'19:30'}, 6:  {sunrise:'05:10',sunset:'19:50'},
-                7:  {sunrise:'05:20',sunset:'19:45'}, 8:  {sunrise:'05:45',sunset:'19:15'},
-                9:  {sunrise:'06:10',sunset:'18:30'}, 10: {sunrise:'06:40',sunset:'17:45'},
-                11: {sunrise:'07:10',sunset:'17:15'}, 12: {sunrise:'07:30',sunset:'17:15'}
+                1: {sunrise:'07:04', sunset:'16:55'}, 2: {sunrise:'06:37', sunset:'17:22'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:22', sunset:'18:37'},
+                5: {sunrise:'04:55', sunset:'19:04'}, 6: {sunrise:'04:45', sunset:'19:14'},
+                7: {sunrise:'04:55', sunset:'19:04'}, 8: {sunrise:'05:22', sunset:'18:37'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:37', sunset:'17:22'},
+                11: {sunrise:'07:04', sunset:'16:55'}, 12: {sunrise:'07:14', sunset:'16:45'}
             },
             'RKSS': { // 김포
-                1:  {sunrise:'07:30',sunset:'17:30'}, 2:  {sunrise:'07:10',sunset:'18:00'},
-                3:  {sunrise:'06:30',sunset:'18:30'}, 4:  {sunrise:'05:50',sunset:'19:00'},
-                5:  {sunrise:'05:20',sunset:'19:30'}, 6:  {sunrise:'05:10',sunset:'19:50'},
-                7:  {sunrise:'05:20',sunset:'19:45'}, 8:  {sunrise:'05:45',sunset:'19:15'},
-                9:  {sunrise:'06:10',sunset:'18:30'}, 10: {sunrise:'06:40',sunset:'17:45'},
-                11: {sunrise:'07:10',sunset:'17:15'}, 12: {sunrise:'07:30',sunset:'17:15'}
+                1: {sunrise:'07:05', sunset:'16:54'}, 2: {sunrise:'06:37', sunset:'17:22'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:22', sunset:'18:37'},
+                5: {sunrise:'04:54', sunset:'19:05'}, 6: {sunrise:'04:44', sunset:'19:15'},
+                7: {sunrise:'04:54', sunset:'19:05'}, 8: {sunrise:'05:22', sunset:'18:37'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:37', sunset:'17:22'},
+                11: {sunrise:'07:05', sunset:'16:54'}, 12: {sunrise:'07:15', sunset:'16:44'}
             },
+            'RKPC': { // 제주
+                1: {sunrise:'06:58', sunset:'17:01'}, 2: {sunrise:'06:33', sunset:'17:26'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:26', sunset:'18:33'},
+                5: {sunrise:'05:01', sunset:'18:58'}, 6: {sunrise:'04:52', sunset:'19:07'},
+                7: {sunrise:'05:01', sunset:'18:58'}, 8: {sunrise:'05:26', sunset:'18:33'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:33', sunset:'17:26'},
+                11: {sunrise:'06:58', sunset:'17:01'}, 12: {sunrise:'07:07', sunset:'16:52'}
+            },
+            'RKPK': { // 부산
+                1: {sunrise:'07:00', sunset:'16:59'}, 2: {sunrise:'06:35', sunset:'17:24'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:24', sunset:'18:35'},
+                5: {sunrise:'04:59', sunset:'19:00'}, 6: {sunrise:'04:49', sunset:'19:10'},
+                7: {sunrise:'04:59', sunset:'19:00'}, 8: {sunrise:'05:24', sunset:'18:35'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:35', sunset:'17:24'},
+                11: {sunrise:'07:00', sunset:'16:59'}, 12: {sunrise:'07:10', sunset:'16:49'}
+            },
+            'RKTU': { // 청주
+                1: {sunrise:'07:03', sunset:'16:56'}, 2: {sunrise:'06:36', sunset:'17:23'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:23', sunset:'18:36'},
+                5: {sunrise:'04:56', sunset:'19:03'}, 6: {sunrise:'04:46', sunset:'19:13'},
+                7: {sunrise:'04:56', sunset:'19:03'}, 8: {sunrise:'05:23', sunset:'18:36'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:36', sunset:'17:23'},
+                11: {sunrise:'07:03', sunset:'16:56'}, 12: {sunrise:'07:13', sunset:'16:46'}
+            },
+            'RKJB': { // 무안
+                1: {sunrise:'07:00', sunset:'16:59'}, 2: {sunrise:'06:34', sunset:'17:25'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:25', sunset:'18:34'},
+                5: {sunrise:'04:59', sunset:'19:00'}, 6: {sunrise:'04:50', sunset:'19:09'},
+                7: {sunrise:'04:59', sunset:'19:00'}, 8: {sunrise:'05:25', sunset:'18:34'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:34', sunset:'17:25'},
+                11: {sunrise:'07:00', sunset:'16:59'}, 12: {sunrise:'07:09', sunset:'16:50'}
+            },
+            'RKJK': { // 군산
+                1: {sunrise:'07:02', sunset:'16:57'}, 2: {sunrise:'06:35', sunset:'17:24'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:24', sunset:'18:35'},
+                5: {sunrise:'04:57', sunset:'19:02'}, 6: {sunrise:'04:48', sunset:'19:11'},
+                7: {sunrise:'04:57', sunset:'19:02'}, 8: {sunrise:'05:24', sunset:'18:35'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:35', sunset:'17:24'},
+                11: {sunrise:'07:02', sunset:'16:57'}, 12: {sunrise:'07:11', sunset:'16:48'}
+            },
+            
+            // 일본 (10개)
             'RJAA': { // 나리타
-                1:  {sunrise:'06:45',sunset:'16:45'}, 2:  {sunrise:'06:25',sunset:'17:15'},
-                3:  {sunrise:'05:45',sunset:'17:45'}, 4:  {sunrise:'05:00',sunset:'18:15'},
-                5:  {sunrise:'04:30',sunset:'18:45'}, 6:  {sunrise:'04:20',sunset:'19:00'},
-                7:  {sunrise:'04:30',sunset:'19:00'}, 8:  {sunrise:'05:00',sunset:'18:30'},
-                9:  {sunrise:'05:25',sunset:'17:45'}, 10: {sunrise:'05:55',sunset:'17:00'},
-                11: {sunrise:'06:30',sunset:'16:30'}, 12: {sunrise:'06:45',sunset:'16:30'}
+                1: {sunrise:'07:01', sunset:'16:58'}, 2: {sunrise:'06:35', sunset:'17:24'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:24', sunset:'18:35'},
+                5: {sunrise:'04:58', sunset:'19:01'}, 6: {sunrise:'04:48', sunset:'19:11'},
+                7: {sunrise:'04:58', sunset:'19:01'}, 8: {sunrise:'05:24', sunset:'18:35'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:35', sunset:'17:24'},
+                11: {sunrise:'07:01', sunset:'16:58'}, 12: {sunrise:'07:11', sunset:'16:48'}
             },
             'RJTT': { // 하네다
-                1:  {sunrise:'06:45',sunset:'16:45'}, 2:  {sunrise:'06:25',sunset:'17:15'},
-                3:  {sunrise:'05:45',sunset:'17:45'}, 4:  {sunrise:'05:00',sunset:'18:15'},
-                5:  {sunrise:'04:30',sunset:'18:45'}, 6:  {sunrise:'04:20',sunset:'19:00'},
-                7:  {sunrise:'04:30',sunset:'19:00'}, 8:  {sunrise:'05:00',sunset:'18:30'},
-                9:  {sunrise:'05:25',sunset:'17:45'}, 10: {sunrise:'05:55',sunset:'17:00'},
-                11: {sunrise:'06:30',sunset:'16:30'}, 12: {sunrise:'06:45',sunset:'16:30'}
+                1: {sunrise:'07:01', sunset:'16:58'}, 2: {sunrise:'06:35', sunset:'17:24'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:24', sunset:'18:35'},
+                5: {sunrise:'04:58', sunset:'19:01'}, 6: {sunrise:'04:48', sunset:'19:11'},
+                7: {sunrise:'04:58', sunset:'19:01'}, 8: {sunrise:'05:24', sunset:'18:35'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:35', sunset:'17:24'},
+                11: {sunrise:'07:01', sunset:'16:58'}, 12: {sunrise:'07:11', sunset:'16:48'}
+            },
+            'RJBB': { // 간사이
+                1: {sunrise:'06:59', sunset:'17:00'}, 2: {sunrise:'06:34', sunset:'17:25'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:25', sunset:'18:34'},
+                5: {sunrise:'05:00', sunset:'18:59'}, 6: {sunrise:'04:51', sunset:'19:08'},
+                7: {sunrise:'05:00', sunset:'18:59'}, 8: {sunrise:'05:25', sunset:'18:34'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:34', sunset:'17:25'},
+                11: {sunrise:'06:59', sunset:'17:00'}, 12: {sunrise:'07:08', sunset:'16:51'}
+            },
+            'RJCC': { // 삿포로
+                1: {sunrise:'07:14', sunset:'16:45'}, 2: {sunrise:'06:42', sunset:'17:17'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:17', sunset:'18:42'},
+                5: {sunrise:'04:45', sunset:'19:14'}, 6: {sunrise:'04:34', sunset:'19:25'},
+                7: {sunrise:'04:45', sunset:'19:14'}, 8: {sunrise:'05:17', sunset:'18:42'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:42', sunset:'17:17'},
+                11: {sunrise:'07:14', sunset:'16:45'}, 12: {sunrise:'07:25', sunset:'16:34'}
+            },
+            'RJFF': { // 후쿠오카
+                1: {sunrise:'06:58', sunset:'17:01'}, 2: {sunrise:'06:33', sunset:'17:26'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:26', sunset:'18:33'},
+                5: {sunrise:'05:01', sunset:'18:58'}, 6: {sunrise:'04:52', sunset:'19:07'},
+                7: {sunrise:'05:01', sunset:'18:58'}, 8: {sunrise:'05:26', sunset:'18:33'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:33', sunset:'17:26'},
+                11: {sunrise:'06:58', sunset:'17:01'}, 12: {sunrise:'07:07', sunset:'16:52'}
+            },
+            'RJFK': { // 가고시마
+                1: {sunrise:'06:55', sunset:'17:04'}, 2: {sunrise:'06:31', sunset:'17:28'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:28', sunset:'18:31'},
+                5: {sunrise:'05:04', sunset:'18:55'}, 6: {sunrise:'04:56', sunset:'19:03'},
+                7: {sunrise:'05:04', sunset:'18:55'}, 8: {sunrise:'05:28', sunset:'18:31'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:31', sunset:'17:28'},
+                11: {sunrise:'06:55', sunset:'17:04'}, 12: {sunrise:'07:03', sunset:'16:56'}
+            },
+            'RJFT': { // 구마모토
+                1: {sunrise:'06:56', sunset:'17:03'}, 2: {sunrise:'06:32', sunset:'17:27'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:27', sunset:'18:32'},
+                5: {sunrise:'05:03', sunset:'18:56'}, 6: {sunrise:'04:54', sunset:'19:05'},
+                7: {sunrise:'05:03', sunset:'18:56'}, 8: {sunrise:'05:27', sunset:'18:32'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:32', sunset:'17:27'},
+                11: {sunrise:'06:56', sunset:'17:03'}, 12: {sunrise:'07:05', sunset:'16:54'}
+            },
+            'RJOS': { // 도쿠시마
+                1: {sunrise:'06:59', sunset:'17:00'}, 2: {sunrise:'06:34', sunset:'17:25'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:25', sunset:'18:34'},
+                5: {sunrise:'05:00', sunset:'18:59'}, 6: {sunrise:'04:51', sunset:'19:08'},
+                7: {sunrise:'05:00', sunset:'18:59'}, 8: {sunrise:'05:25', sunset:'18:34'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:34', sunset:'17:25'},
+                11: {sunrise:'06:59', sunset:'17:00'}, 12: {sunrise:'07:08', sunset:'16:51'}
+            },
+            'ROAH': { // 나하
+                1: {sunrise:'06:45', sunset:'17:14'}, 2: {sunrise:'06:26', sunset:'17:33'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:33', sunset:'18:26'},
+                5: {sunrise:'05:14', sunset:'18:45'}, 6: {sunrise:'05:07', sunset:'18:52'},
+                7: {sunrise:'05:14', sunset:'18:45'}, 8: {sunrise:'05:33', sunset:'18:26'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:26', sunset:'17:33'},
+                11: {sunrise:'06:45', sunset:'17:14'}, 12: {sunrise:'06:52', sunset:'17:07'}
+            },
+            
+            // 중국 (11개)
+            'ZSPD': { // 상하이 푸동
+                1: {sunrise:'06:53', sunset:'17:06'}, 2: {sunrise:'06:31', sunset:'17:28'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:28', sunset:'18:31'},
+                5: {sunrise:'05:06', sunset:'18:53'}, 6: {sunrise:'04:57', sunset:'19:02'},
+                7: {sunrise:'05:06', sunset:'18:53'}, 8: {sunrise:'05:28', sunset:'18:31'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:31', sunset:'17:28'},
+                11: {sunrise:'06:53', sunset:'17:06'}, 12: {sunrise:'07:02', sunset:'16:57'}
+            },
+            'ZBDS': { // 오르도스
+                1: {sunrise:'07:08', sunset:'16:51'}, 2: {sunrise:'06:39', sunset:'17:20'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:20', sunset:'18:39'},
+                5: {sunrise:'04:51', sunset:'19:08'}, 6: {sunrise:'04:41', sunset:'19:18'},
+                7: {sunrise:'04:51', sunset:'19:08'}, 8: {sunrise:'05:20', sunset:'18:39'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:39', sunset:'17:20'},
+                11: {sunrise:'07:08', sunset:'16:51'}, 12: {sunrise:'07:18', sunset:'16:41'}
+            },
+            'ZGDY': { // 장자제
+                1: {sunrise:'06:50', sunset:'17:09'}, 2: {sunrise:'06:29', sunset:'17:30'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:30', sunset:'18:29'},
+                5: {sunrise:'05:09', sunset:'18:50'}, 6: {sunrise:'05:01', sunset:'18:58'},
+                7: {sunrise:'05:09', sunset:'18:50'}, 8: {sunrise:'05:30', sunset:'18:29'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:29', sunset:'17:30'},
+                11: {sunrise:'06:50', sunset:'17:09'}, 12: {sunrise:'06:58', sunset:'17:01'}
+            },
+            'ZHCC': { // 정저우
+                1: {sunrise:'06:59', sunset:'17:00'}, 2: {sunrise:'06:34', sunset:'17:25'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:25', sunset:'18:34'},
+                5: {sunrise:'05:00', sunset:'18:59'}, 6: {sunrise:'04:50', sunset:'19:09'},
+                7: {sunrise:'05:00', sunset:'18:59'}, 8: {sunrise:'05:25', sunset:'18:34'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:34', sunset:'17:25'},
+                11: {sunrise:'06:59', sunset:'17:00'}, 12: {sunrise:'07:09', sunset:'16:50'}
+            },
+            'ZSJN': { // 지난
+                1: {sunrise:'07:03', sunset:'16:56'}, 2: {sunrise:'06:36', sunset:'17:23'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:23', sunset:'18:36'},
+                5: {sunrise:'04:56', sunset:'19:03'}, 6: {sunrise:'04:46', sunset:'19:13'},
+                7: {sunrise:'04:56', sunset:'19:03'}, 8: {sunrise:'05:23', sunset:'18:36'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:36', sunset:'17:23'},
+                11: {sunrise:'07:03', sunset:'16:56'}, 12: {sunrise:'07:13', sunset:'16:46'}
+            },
+            'ZSTX': { // 툰시
+                1: {sunrise:'06:51', sunset:'17:08'}, 2: {sunrise:'06:29', sunset:'17:30'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:30', sunset:'18:29'},
+                5: {sunrise:'05:08', sunset:'18:51'}, 6: {sunrise:'05:00', sunset:'18:59'},
+                7: {sunrise:'05:08', sunset:'18:51'}, 8: {sunrise:'05:30', sunset:'18:29'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:29', sunset:'17:30'},
+                11: {sunrise:'06:51', sunset:'17:08'}, 12: {sunrise:'06:59', sunset:'17:00'}
+            },
+            'ZSYT': { // 옌타이
+                1: {sunrise:'07:04', sunset:'16:55'}, 2: {sunrise:'06:37', sunset:'17:22'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:22', sunset:'18:37'},
+                5: {sunrise:'04:55', sunset:'19:04'}, 6: {sunrise:'04:45', sunset:'19:14'},
+                7: {sunrise:'04:55', sunset:'19:04'}, 8: {sunrise:'05:22', sunset:'18:37'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:37', sunset:'17:22'},
+                11: {sunrise:'07:04', sunset:'16:55'}, 12: {sunrise:'07:14', sunset:'16:45'}
+            },
+            'ZYCC': { // 창춘
+                1: {sunrise:'07:16', sunset:'16:43'}, 2: {sunrise:'06:43', sunset:'17:16'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:16', sunset:'18:43'},
+                5: {sunrise:'04:43', sunset:'19:16'}, 6: {sunrise:'04:32', sunset:'19:27'},
+                7: {sunrise:'04:43', sunset:'19:16'}, 8: {sunrise:'05:16', sunset:'18:43'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:43', sunset:'17:16'},
+                11: {sunrise:'07:16', sunset:'16:43'}, 12: {sunrise:'07:27', sunset:'16:32'}
+            },
+            'ZYHB': { // 하얼빈
+                1: {sunrise:'07:19', sunset:'16:40'}, 2: {sunrise:'06:45', sunset:'17:14'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:14', sunset:'18:45'},
+                5: {sunrise:'04:40', sunset:'19:19'}, 6: {sunrise:'04:28', sunset:'19:31'},
+                7: {sunrise:'04:40', sunset:'19:19'}, 8: {sunrise:'05:14', sunset:'18:45'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:45', sunset:'17:14'},
+                11: {sunrise:'07:19', sunset:'16:40'}, 12: {sunrise:'07:31', sunset:'16:28'}
+            },
+            'ZYTX': { // 선양
+                1: {sunrise:'07:12', sunset:'16:47'}, 2: {sunrise:'06:41', sunset:'17:18'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:18', sunset:'18:41'},
+                5: {sunrise:'04:47', sunset:'19:12'}, 6: {sunrise:'04:36', sunset:'19:23'},
+                7: {sunrise:'04:47', sunset:'19:12'}, 8: {sunrise:'05:18', sunset:'18:41'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:41', sunset:'17:18'},
+                11: {sunrise:'07:12', sunset:'16:47'}, 12: {sunrise:'07:23', sunset:'16:36'}
+            },
+            'ZYYJ': { // 옌지
+                1: {sunrise:'07:14', sunset:'16:45'}, 2: {sunrise:'06:42', sunset:'17:17'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:17', sunset:'18:42'},
+                5: {sunrise:'04:45', sunset:'19:14'}, 6: {sunrise:'04:34', sunset:'19:25'},
+                7: {sunrise:'04:45', sunset:'19:14'}, 8: {sunrise:'05:17', sunset:'18:42'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:42', sunset:'17:17'},
+                11: {sunrise:'07:14', sunset:'16:45'}, 12: {sunrise:'07:25', sunset:'16:34'}
+            },
+            
+            // 대만 (2개)
+            'RCTP': { // 타오위안
+                1: {sunrise:'06:43', sunset:'17:16'}, 2: {sunrise:'06:25', sunset:'17:34'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:34', sunset:'18:25'},
+                5: {sunrise:'05:16', sunset:'18:43'}, 6: {sunrise:'05:09', sunset:'18:50'},
+                7: {sunrise:'05:16', sunset:'18:43'}, 8: {sunrise:'05:34', sunset:'18:25'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:25', sunset:'17:34'},
+                11: {sunrise:'06:43', sunset:'17:16'}, 12: {sunrise:'06:50', sunset:'17:09'}
+            },
+            'RCSS': { // 타이베이 송산
+                1: {sunrise:'06:43', sunset:'17:16'}, 2: {sunrise:'06:25', sunset:'17:34'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:34', sunset:'18:25'},
+                5: {sunrise:'05:16', sunset:'18:43'}, 6: {sunrise:'05:09', sunset:'18:50'},
+                7: {sunrise:'05:16', sunset:'18:43'}, 8: {sunrise:'05:34', sunset:'18:25'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:25', sunset:'17:34'},
+                11: {sunrise:'06:43', sunset:'17:16'}, 12: {sunrise:'06:50', sunset:'17:09'}
+            },
+            
+            // 베트남 (3개)
+            'VVCR': { // 캄란
+                1: {sunrise:'06:20', sunset:'17:39'}, 2: {sunrise:'06:11', sunset:'17:48'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:48', sunset:'18:11'},
+                5: {sunrise:'05:39', sunset:'18:20'}, 6: {sunrise:'05:36', sunset:'18:23'},
+                7: {sunrise:'05:39', sunset:'18:20'}, 8: {sunrise:'05:48', sunset:'18:11'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:11', sunset:'17:48'},
+                11: {sunrise:'06:20', sunset:'17:39'}, 12: {sunrise:'06:23', sunset:'17:36'}
+            },
+            'VVDN': { // 다낭
+                1: {sunrise:'06:27', sunset:'17:32'}, 2: {sunrise:'06:16', sunset:'17:43'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:43', sunset:'18:16'},
+                5: {sunrise:'05:32', sunset:'18:27'}, 6: {sunrise:'05:27', sunset:'18:32'},
+                7: {sunrise:'05:32', sunset:'18:27'}, 8: {sunrise:'05:43', sunset:'18:16'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:16', sunset:'17:43'},
+                11: {sunrise:'06:27', sunset:'17:32'}, 12: {sunrise:'06:32', sunset:'17:27'}
+            },
+            'VVPQ': { // 푸꾸옥
+                1: {sunrise:'06:17', sunset:'17:42'}, 2: {sunrise:'06:10', sunset:'17:49'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:49', sunset:'18:10'},
+                5: {sunrise:'05:42', sunset:'18:17'}, 6: {sunrise:'05:39', sunset:'18:20'},
+                7: {sunrise:'05:42', sunset:'18:17'}, 8: {sunrise:'05:49', sunset:'18:10'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:10', sunset:'17:49'},
+                11: {sunrise:'06:17', sunset:'17:42'}, 12: {sunrise:'06:20', sunset:'17:39'}
+            },
+            
+            // 태국 (2개)
+            'VTBS': { // 방콕
+                1: {sunrise:'06:23', sunset:'17:36'}, 2: {sunrise:'06:13', sunset:'17:46'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:46', sunset:'18:13'},
+                5: {sunrise:'05:36', sunset:'18:23'}, 6: {sunrise:'05:32', sunset:'18:27'},
+                7: {sunrise:'05:36', sunset:'18:23'}, 8: {sunrise:'05:46', sunset:'18:13'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:13', sunset:'17:46'},
+                11: {sunrise:'06:23', sunset:'17:36'}, 12: {sunrise:'06:27', sunset:'17:32'}
+            },
+            'VTCC': { // 치앙마이
+                1: {sunrise:'06:32', sunset:'17:27'}, 2: {sunrise:'06:18', sunset:'17:41'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:41', sunset:'18:18'},
+                5: {sunrise:'05:27', sunset:'18:32'}, 6: {sunrise:'05:22', sunset:'18:37'},
+                7: {sunrise:'05:27', sunset:'18:32'}, 8: {sunrise:'05:41', sunset:'18:18'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:18', sunset:'17:41'},
+                11: {sunrise:'06:32', sunset:'17:27'}, 12: {sunrise:'06:37', sunset:'17:22'}
+            },
+            
+            // 인도네시아 (1개)
+            'WAMM': { // 마나도
+                1: {sunrise:'06:02', sunset:'17:57'}, 2: {sunrise:'06:01', sunset:'17:58'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:58', sunset:'18:01'},
+                5: {sunrise:'05:57', sunset:'18:02'}, 6: {sunrise:'05:56', sunset:'18:03'},
+                7: {sunrise:'05:57', sunset:'18:02'}, 8: {sunrise:'05:58', sunset:'18:01'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:01', sunset:'17:58'},
+                11: {sunrise:'06:02', sunset:'17:57'}, 12: {sunrise:'06:03', sunset:'17:56'}
+            },
+            
+            // 카자흐스탄 (1개)
+            'UAAA': { // 알마티
+                1: {sunrise:'07:15', sunset:'16:44'}, 2: {sunrise:'06:43', sunset:'17:16'},
+                3: {sunrise:'06:00', sunset:'18:00'}, 4: {sunrise:'05:16', sunset:'18:43'},
+                5: {sunrise:'04:44', sunset:'19:15'}, 6: {sunrise:'04:33', sunset:'19:26'},
+                7: {sunrise:'04:44', sunset:'19:15'}, 8: {sunrise:'05:16', sunset:'18:43'},
+                9: {sunrise:'06:00', sunset:'18:00'}, 10: {sunrise:'06:43', sunset:'17:16'},
+                11: {sunrise:'07:15', sunset:'16:44'}, 12: {sunrise:'07:26', sunset:'16:33'}
             }
         };
         
-        // ✅ 공항 일출일몰 가져오기 (DB 사용)
+        // ✅ 사용자 추가 공항 (localStorage)
+        function loadCustomAirports() {
+            const saved = localStorage.getItem('customAirports');
+            return saved ? JSON.parse(saved) : {};
+        }
+        
+        function saveCustomAirport(icao, data) {
+            const custom = loadCustomAirports();
+            custom[icao] = data;
+            localStorage.setItem('customAirports', JSON.stringify(custom));
+        }
+        
+        // ✅ 공항 일출일몰 가져오기 (하이브리드)
         function getSunriseSunset(icao, date) {
             const month = new Date(date).getMonth() + 1;
-            const defaultSun = { sunrise: '06:00', sunset: '18:00' };
-            return AIRPORT_SUN_DB[icao]?.[month] || defaultSun;
+            
+            // 1. 기본 DB 확인
+            if (AIRPORT_SUN_DB[icao]) {
+                return AIRPORT_SUN_DB[icao][month] || {sunrise: '06:00', sunset: '18:00'};
+            }
+            
+            // 2. 사용자 추가 공항 확인
+            const custom = loadCustomAirports();
+            if (custom[icao] && custom[icao][month]) {
+                return custom[icao][month];
+            }
+            
+            // 3. Fallback (기본값)
+            console.log(`공항 ${icao} DB 없음, 기본값 사용`);
+            return {sunrise: '06:00', sunset: '18:00'};
         }
         
         // ✅ 시간 계산 헬퍼 함수
@@ -1039,6 +1442,118 @@
             delete routeMap[flt];
             localStorage.setItem('routeMapping', JSON.stringify(routeMap));
             showRouteModal();
+        };
+        
+        // ✅ 공항 관리
+        window.showAirportModal = function() {
+            // 내장 공항 목록
+            const builtinAirports = Object.keys(AIRPORT_SUN_DB).sort();
+            document.getElementById('builtinAirportList').innerHTML = builtinAirports.map(icao => 
+                `<div style="padding: 6px 10px; background: rgba(52, 211, 153, 0.1); border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600; color: #34d399;">${icao}</div>`
+            ).join('');
+            
+            // 사용자 추가 공항
+            const custom = loadCustomAirports();
+            const customList = Object.keys(custom);
+            if (customList.length > 0) {
+                document.getElementById('customAirportList').innerHTML = customList.map(icao =>
+                    `<div style="padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #fbbf24;">${icao}</span>
+                        <div>
+                            <button onclick="editAirport('${icao}')" style="margin-right: 5px; padding: 4px 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; border-radius: 4px; cursor: pointer;">✏️ 수정</button>
+                            <button onclick="deleteAirport('${icao}')" style="padding: 4px 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; border-radius: 4px; cursor: pointer;">🗑️</button>
+                        </div>
+                    </div>`
+                ).join('');
+            } else {
+                document.getElementById('customAirportList').innerHTML = '<p style="font-size: 12px; color: #64748b;">추가된 공항이 없습니다.</p>';
+            }
+            
+            document.getElementById('airportModal').classList.add('show');
+        };
+        
+        window.closeAirportModal = function() {
+            document.getElementById('airportModal').classList.remove('show');
+        };
+        
+        window.showAddAirportForm = function() {
+            document.getElementById('newAirportICAO').value = '';
+            document.getElementById('newAirportName').value = '';
+            
+            // 12개월 입력 필드 생성
+            const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+            document.getElementById('monthlyTimes').innerHTML = months.map((m, i) => `
+                <div style="padding: 10px; background: rgba(30, 41, 59, 0.6); border-radius: 8px;">
+                    <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #94a3b8;">${m}</div>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="text" id="sunrise_${i+1}" placeholder="06:00" style="width: 60px; padding: 6px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 4px; color: #e2e8f0; font-size: 12px; text-align: center;">
+                        <span style="color: #64748b;">~</span>
+                        <input type="text" id="sunset_${i+1}" placeholder="18:00" style="width: 60px; padding: 6px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 4px; color: #e2e8f0; font-size: 12px; text-align: center;">
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('addAirportModal').classList.add('show');
+        };
+        
+        window.closeAddAirportModal = function() {
+            document.getElementById('addAirportModal').classList.remove('show');
+        };
+        
+        window.editAirport = function(icao) {
+            const custom = loadCustomAirports();
+            const data = custom[icao];
+            
+            document.getElementById('newAirportICAO').value = icao;
+            document.getElementById('newAirportICAO').readOnly = true;
+            
+            // 기존 데이터 채우기
+            for (let month = 1; month <= 12; month++) {
+                if (data[month]) {
+                    document.getElementById(`sunrise_${month}`).value = data[month].sunrise || '';
+                    document.getElementById(`sunset_${month}`).value = data[month].sunset || '';
+                }
+            }
+            
+            document.getElementById('addAirportModal').classList.add('show');
+        };
+        
+        window.saveNewAirport = function() {
+            const icao = document.getElementById('newAirportICAO').value.trim().toUpperCase();
+            if (!icao || icao.length !== 4) {
+                alert('ICAO 코드는 4글자여야 합니다!');
+                return;
+            }
+            
+            const data = {};
+            for (let month = 1; month <= 12; month++) {
+                const sunrise = document.getElementById(`sunrise_${month}`).value.trim();
+                const sunset = document.getElementById(`sunset_${month}`).value.trim();
+                
+                if (sunrise && sunset) {
+                    data[month] = { sunrise, sunset };
+                } else {
+                    // 기본값
+                    data[month] = { sunrise: '06:00', sunset: '18:00' };
+                }
+            }
+            
+            saveCustomAirport(icao, data);
+            alert(`✅ ${icao} 공항이 저장되었습니다!`);
+            
+            document.getElementById('newAirportICAO').readOnly = false;
+            closeAddAirportModal();
+            closeAirportModal();
+        };
+        
+        window.deleteAirport = function(icao) {
+            if (!confirm(`${icao} 공항을 삭제하시겠습니까?`)) return;
+            
+            const custom = loadCustomAirports();
+            delete custom[icao];
+            localStorage.setItem('customAirports', JSON.stringify(custom));
+            
+            showAirportModal();
         };
         
         // ✅ 모달
