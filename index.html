@@ -620,7 +620,7 @@
     <!-- Firebase SDK (CDN) -->
     <script type="module">
         import { initializeApp, getApps, deleteApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
         
         console.log('🔥 Firebase SDK 로드 완료');
@@ -634,15 +634,21 @@
         let prev = {block:0,pic:0,picSupv:0,coPilot:0,tr:0,night:0,inst:0,to:0,ld:0};
         let unsubscribe = null;
         
-        // 유틸리티 함수
+        // ✅ 정확한 유틸리티 함수
         function pad(n) { return String(n).padStart(2, '0'); }
+        
         function toDisplay(dec) {
             if (!dec) return '0:00';
             const h = Math.floor(dec);
-            const m = Math.round((dec - h) * 60);
+            let m = Math.round((dec - h) * 60);
+            if (m === 60) {
+                return `${h + 1}:00`;
+            }
             return `${h}:${pad(m)}`;
         }
+        
         function toDec(h, m) { return (h || 0) + (m || 0) / 60; }
+        
         function timeStr(h, m) {
             if (!h && !m) return '';
             return `${pad(h||0)}:${pad(m||0)}`;
@@ -681,14 +687,12 @@
                 console.log('Firebase 초기화 시작...');
                 setSyncStatus('connecting', '🔄 연결 중...');
                 
-                // 기존 실시간 동기화 중지
                 if (unsubscribe) {
                     console.log('기존 실시간 동기화 중지 중...');
                     unsubscribe();
                     unsubscribe = null;
                 }
                 
-                // 기존 Firebase 앱 정리
                 const existingApps = getApps();
                 if (existingApps.length > 0) {
                     console.log('기존 Firebase 앱 삭제 중...');
@@ -698,7 +702,6 @@
                     console.log('✅ 기존 앱 삭제 완료');
                 }
                 
-                // 새 Firebase 앱 초기화
                 const app = initializeApp({
                     apiKey: config.apiKey,
                     authDomain: `${config.projectId}.firebaseapp.com`,
@@ -710,12 +713,10 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // ✅ 고정 User ID 사용
                 userId = 'pilot-logbook-user';
                 await signInAnonymously(auth);
                 
                 console.log('✅ 인증 완료. User ID:', userId);
-                console.log('💡 모든 기기에서 같은 User ID를 사용합니다.');
                 
                 await loadData();
                 setupRealtimeSync();
@@ -751,7 +752,6 @@
                 
                 console.log(`✅ ${flights.length}개 비행 기록 로드됨`);
                 
-                // 이전 누적 데이터 로드
                 const prevRef = doc(db, 'users', userId, 'settings', 'previous');
                 const prevDoc = await getDoc(prevRef);
                 
@@ -955,7 +955,7 @@
             render(filtered);
         }
         
-        // 전역 함수로 노출
+        // 전역 함수
         window.saveFirebaseConfig = function() {
             const apiKey = document.getElementById('apiKey').value.trim();
             const projectId = document.getElementById('projectId').value.trim();
@@ -1006,7 +1006,6 @@
             document.getElementById('modal').classList.add('show');
             document.getElementById('date').value = new Date().toISOString().split('T')[0];
             
-            // 시간 계산 이벤트 리스너
             ['rampOutH', 'rampOutM', 'takeoffH', 'takeoffM', 'landingH', 'landingM', 'rampInH', 'rampInM'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -1181,47 +1180,32 @@
             }
             
             console.log('📤 Excel 가져오기:', file.name);
-            console.log('=== SK2026 Excel 구조 ===');
-            console.log('Row 6: 이전 누적 (timedelta 형식)');
-            console.log('Row 7+: 비행 기록');
-            console.log('A:Date, B:Aircraft, D:FLT_NO, E:From, F:To');
-            console.log('H:PIC_Supv, K:Block, L:Night, M:Inst');
-            console.log('P:TO_Night, Q:LD_Day, S:Remark');
             
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, { type: 'array', cellDates: false });
+                    const wb = XLSX.read(data, { type: 'array', cellDates: true });
                     const ws = wb.Sheets[wb.SheetNames[0]];
                     
                     console.log('✅ Excel 로드 완료');
                     
-                    // timedelta 파싱 함수
+                    // ✅ 정확한 timedelta 파싱 함수
                     const parseTimedelta = (cell) => {
-                        if (!cell || !cell.v) return 0;
+                        if (!cell || cell.v === undefined || cell.v === null) return 0;
                         const val = cell.v;
                         
-                        // timedelta 객체인 경우
-                        if (typeof val === 'object' && val.days !== undefined) {
-                            return (val.days * 24) + (val.seconds / 3600);
+                        // Date 객체이면서 시간 형식 (Excel에서 time은 소수점으로 저장)
+                        if (val instanceof Date) {
+                            const hours = val.getHours();
+                            const minutes = val.getMinutes();
+                            const seconds = val.getSeconds();
+                            return hours + minutes / 60 + seconds / 3600;
                         }
                         
-                        // 문자열 "4:02:00" 형식
-                        if (typeof val === 'string') {
-                            const match = val.match(/(\d+):(\d+):(\d+)/);
-                            if (match) {
-                                return parseInt(match[1]) + parseInt(match[2])/60 + parseInt(match[3])/3600;
-                            }
-                            const match2 = val.match(/(\d+) days?,\s*(\d+):(\d+):(\d+)/);
-                            if (match2) {
-                                return parseInt(match2[1])*24 + parseInt(match2[2]) + parseInt(match2[3])/60 + parseInt(match2[4])/3600;
-                            }
-                        }
-                        
-                        // 숫자 (시간)
+                        // 숫자 (Excel에서 duration은 days 단위)
                         if (typeof val === 'number') {
-                            return val;
+                            return val * 24; // days → hours
                         }
                         
                         return 0;
@@ -1240,7 +1224,12 @@
                         ld: (parseInt(ws['Q6']?.v || 0)) + (parseInt(ws['R6']?.v || 0))
                     };
                     
-                    console.log('이전 누적:', prev);
+                    console.log('이전 누적:', {
+                        block: toDisplay(prev.block),
+                        night: toDisplay(prev.night),
+                        inst: toDisplay(prev.inst)
+                    });
+                    
                     await savePreviousToFirebase();
                     
                     // Row 7부터 비행 기록
@@ -1254,9 +1243,13 @@
                         const dateVal = cellA.v;
                         if (!dateVal) break;
                         
+                        // ✅ 날짜 정확한 변환
                         let dateStr = '';
                         if (dateVal instanceof Date) {
-                            dateStr = dateVal.toISOString().split('T')[0];
+                            const year = dateVal.getFullYear();
+                            const month = String(dateVal.getMonth() + 1).padStart(2, '0');
+                            const day = String(dateVal.getDate()).padStart(2, '0');
+                            dateStr = `${year}-${month}-${day}`;
                         } else {
                             dateStr = dateVal.toString().split('T')[0].split(' ')[0];
                         }
@@ -1291,7 +1284,11 @@
                         };
                         
                         if (imported < 3) {
-                            console.log(`Row ${row}:`, flightData);
+                            console.log(`Row ${row}:`, {
+                                date: flightData.date,
+                                block: toDisplay(flightData.blockTime),
+                                night: toDisplay(flightData.night)
+                            });
                         }
                         
                         await saveFlightToFirebase(flightData);
